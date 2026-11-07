@@ -26,7 +26,7 @@ import zipfile
 from pathlib import Path
 
 # --- settings --------------------------------------------------------------
-TIFFWORKFLOW_TAG = "v2.7.2"
+TIFFWORKFLOW_TAG = "v2.7.3"
 # Package revision for this tiff-workflow tag: v2.7.2 + 1 -> release "v2.7.2-exe1".
 PACKAGE_REVISION = 1
 TOOLS = {

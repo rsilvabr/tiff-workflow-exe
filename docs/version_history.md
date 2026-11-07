@@ -6,7 +6,21 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
-| **[v2.7.2-exe1](#v272-exe1)** | 2026-10-25 | v2.7.2 | First package |
+| **[v2.7.3-exe1](#v273-exe1)** | 2026-11-07 | v2.7.3 | Compress lists originals an interrupted mode 0/9 run left in `OLD_TIFFs` |
+| [v2.7.2-exe1](#v272-exe1) | 2026-10-25 | v2.7.2 | First package |
+
+---
+
+## v2.7.3-exe1
+
+*2026-11-07*
+
+- Packages tiff-workflow
+  [v2.7.3](https://github.com/rsilvabr/tiff-workflow/releases/tag/v2.7.3):
+  compress lists originals that an interrupted mode 0/9 run left in
+  `OLD_TIFFs` with nothing in their place, and `-RestoreStranded` puts them
+  back (`tiff-workflow.exe compress ... -RestoreStranded`).
+- Same bundled tools as v2.7.2-exe1.
 
 ---
 
