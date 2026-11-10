@@ -11,8 +11,8 @@
 > here is a newer way of packaging the same scripts, meant for people who
 > would rather not install Python and the tools themselves.
 
-**Current version: v2.7.4-exe1** (2026-11-07) · packages tiff-workflow
-[v2.7.4](https://github.com/rsilvabr/tiff-workflow/releases/tag/v2.7.4) ·
+**Current version: v2.8.0-exe1** (2026-11-10) · packages tiff-workflow
+[v2.8.0](https://github.com/rsilvabr/tiff-workflow/releases/tag/v2.8.0) ·
 PowerShell 7.6.7 · ExifTool 13.59 · ImageMagick 7.1.2-27 (Q16-HDRI) ·
 [All releases](docs/version_history.md) · [How it works](docs/how_it_works.md) ·
 [Bug tracking](docs/bug_tracking.md)
@@ -74,7 +74,7 @@ GitHub records a build attestation for the zip and `tiff-workflow.exe`. With
 the [GitHub CLI](https://cli.github.com/):
 
 ```
-gh attestation verify tiff-workflow-2.7.4-exe1-x64.zip --repo rsilvabr/tiff-workflow-exe
+gh attestation verify tiff-workflow-2.8.0-exe1-x64.zip --repo rsilvabr/tiff-workflow-exe
 ```
 
 It names the commit and the workflow run the file came from, and fails for a
