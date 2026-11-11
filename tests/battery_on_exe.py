@@ -4,18 +4,18 @@
 
 Uses tools/real_photo_battery.py from a tiff-workflow checkout (the sibling
 folder ../tiff-workflow, or TIFFWORKFLOW_REPO), unchanged, on the PACKAGE's
-scripts: the backends run under the bundled PowerShell 7, and the only pwsh,
-exiftool and magick on PATH are the bundled ones (the battery's own checks
-use them too). Before it, a section of its own drives tiff-workflow.exe
-itself: --help, each backend command, a preset saved from another folder
-(run twice), and the execution policy.
+scripts: every backend is started through tiff-workflow.exe itself (the
+battery's "Python" is the program), and the only exiftool and magick on PATH
+are the bundled ones (the battery's own checks use them too). Before it, a
+section of its own drives tiff-workflow.exe: --help, each backend command, a
+preset saved from another folder and one saved by the PowerShell edition
+(v2.x), each run twice.
 
 The program runs from a copy in a HOSTILE folder on the fixtures' drive
 (Japanese, brackets, a space, % and &), and every file of that copy carries
 the "downloaded from the internet" mark (Zone.Identifier, ZoneId=3) that
-Explorer gives the files of a downloaded zip: under the RemoteSigned policy
-PowerShell refuses such a script unless the launcher's Bypass reaches it.
---ascii-app runs it from dist/ instead, unmarked.
+Explorer gives the files of a downloaded zip. --ascii-app runs it from dist/
+instead, unmarked.
 
 The report lands in AI_tools/ of this repo.
 """
@@ -30,13 +30,18 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TOOL_EXES = ("pwsh.exe", "exiftool.exe", "magick.exe")
+TOOL_EXES = ("exiftool.exe", "magick.exe")
 MOTW = "[ZoneTransfer]\r\nZoneId=3\r\n"
 
 
 def _rmtree(p):
     # ExifTool's archive marks some folders read-only.
     shutil.rmtree(p, onexc=lambda f, q, e: (os.chmod(q, 0o777), f(q)))
+
+
+def _squash(text):
+    """`text` in lower case without any white space."""
+    return "".join(str(text).lower().split())
 
 
 def _mark_downloaded(folder):
@@ -49,30 +54,9 @@ def _mark_downloaded(folder):
     return n
 
 
-def _without_bypass():
-    # os.environ keys are upper-case on Windows.
-    return {k: v for k, v in os.environ.items() if k.upper() != "PSEXECUTIONPOLICYPREFERENCE"}
-
-
-def _policy_without_bypass(pwsh):
-    """The policy this PC applies when the Process scope is not set: the first
-    defined of the other scopes, in PowerShell's order. Read WITH Bypass, as the
-    launcher runs it: without it, a pwsh whose own module files carry the
-    download mark stops at an "untrusted publisher" prompt."""
-    r = subprocess.run([pwsh, "-NoProfile", "-Command",
-                        "Get-ExecutionPolicy -List | ForEach-Object "
-                        "{ '{0}={1}' -f $_.Scope, $_.ExecutionPolicy }"],
-                       capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
-    scopes = dict(ln.strip().split("=", 1) for ln in r.stdout.splitlines() if "=" in ln)
-    for scope in ("MachinePolicy", "UserPolicy", "CurrentUser", "LocalMachine"):
-        if scopes.get(scope, "Undefined") != "Undefined":
-            return scopes[scope]
-    return "Restricted" if scopes else ""   # Windows' default when nothing is set
-
-
 def exe_checks(b, exe, app, fixtures, work):
     """tiff-workflow.exe itself, from the hostile (marked) program folder."""
-    scripts, pwsh = app / "scripts", str(app / "tools" / "pwsh" / "pwsh.exe")
+    scripts = app / "scripts"
     b.section("tiff-workflow.exe")
 
     def run_exe(tag, args, cwd, env=None, timeout=1800):
@@ -86,29 +70,11 @@ def exe_checks(b, exe, app, fixtures, work):
             f"$ {exe} {' '.join(map(str, args))}\nrc={r.returncode} "
             f"({time.time() - t:.0f}s)\n\n{out}", encoding="utf-8")
         print(f"   [{tag}] rc={r.returncode} {time.time() - t:.0f}s", flush=True)
-        bad = [m for m in ("ParserError", "CategoryInfo", "Traceback", "PSSecurityException",
-                           "cannot be loaded") if m in out]
-        b.check(f"{tag}: no PowerShell error record, no traceback", not bad,
+        bad = [m for m in ("Traceback", "FATAL (unhandled error)", "ModuleNotFoundError")
+               if m in out]
+        b.check(f"{tag}: no traceback or unhandled error", not bad,
                 f"found {bad}" if bad else "")
         return r.returncode, out
-
-    # The control: without Bypass, the marked script is refused here -- the
-    # checks below then prove the launcher's Bypass reaches every pwsh it starts.
-    policy = _policy_without_bypass(pwsh)
-    if policy in ("RemoteSigned", "AllSigned", "Restricted"):
-        try:
-            r = subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-File",
-                                str(scripts / "generate_thumbnails.ps1"), "-InputDir", str(work),
-                                "-DryRun"], capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", env=_without_bypass(),
-                               stdin=subprocess.DEVNULL, timeout=300)
-            rc, ran = r.returncode, "No TIFF files found" in (r.stdout + r.stderr)
-        except subprocess.TimeoutExpired:
-            rc, ran = "timeout", False
-        b.check(f"control: policy {policy}, no Bypass: the marked script does not run",
-                rc != 0 and not ran, f"rc={rc}")
-    else:
-        b.skips.append(f"execution-policy control skipped: this PC's policy is {policy}")
 
     rc, out = run_exe("help", ["--help"], work)
     b.check("--help: rc 0, the wizard's own help", rc == 0 and "TIFF Workflow Manager" in out,
@@ -183,26 +149,48 @@ def exe_checks(b, exe, app, fixtures, work):
     for name in ("A.tif", "B.tif"):
         shutil.copy2(plain / name, pre / name)
     wf = {"mode": 1, "workers": 2, "staging": "", "dry_run": False}
-    cmd = convert_tiff.build_compress_command(wf, folders=[pre], ps_name="pwsh")
-    cmd[cmd.index("-File") + 1] = str(work / "old version (deleted)" / "compress_tiff_zip.ps1")
-    entry = {"kind": "compress", "label": f"Compress TIFFs -- mode 1 -- {pre}",
-             "commands": [cmd], "time": "2026-10-25 03:00:00", "manifest_path": None,
-             "manifest_workflow": None, "manifest_default_mode": None, "autofind": None}
+    cmd = convert_tiff.build_compress_command(wf, folders=[pre])
+    old_copy = work / "old version (deleted)"
+    cmd[1] = str(old_copy / "compress_tiff_zip.py")
+
+    def entry(command, folder):
+        return {"kind": "compress", "label": f"Compress TIFFs -- mode 1 -- {folder}",
+                "commands": [command], "time": "2026-10-25 03:00:00", "manifest_path": None,
+                "manifest_workflow": None, "manifest_default_mode": None, "autofind": None}
+
+    # ...and one saved by the PowerShell edition (up to v2.9.1): `pwsh -File <script>.ps1`
+    # with the same arguments. It must run this program's Python backend.
+    pre_ps = host / "preset v2"
+    pre_ps.mkdir()
+    for name in ("A.tif", "B.tif"):
+        shutil.copy2(plain / name, pre_ps / name)
+    ps_cmd = (["pwsh", "-NoProfile", "-File", str(old_copy / ("compress_tiff_zip" + ".ps1"))]
+              + [a.replace(str(pre), str(pre_ps)) for a in cmd[2:]])
     (home / ".convert_tiff_config.json").write_text(
-        json.dumps({"presets": {"NIGHTLY ZIP": entry}}), encoding="utf-8")
+        json.dumps({"presets": {"NIGHTLY ZIP": entry(cmd, pre),
+                                "SAVED BY V2": entry(ps_cmd, pre_ps)}}), encoding="utf-8")
     env = dict(os.environ, USERPROFILE=str(home), HOME=str(home))
     rc, out = run_exe("list-presets", ["--list-presets"], host, env=env)
-    b.check("--list-presets: lists the preset", rc == 0 and "NIGHTLY ZIP" in out, f"rc={rc}")
-    rc, out = run_exe("preset_run1", ["--run-preset", "NIGHTLY ZIP"], host, env=env)
-    outs = sorted((pre / "ZIP").glob("*.tif"))
-    b.check("--run-preset (saved from another folder): rc 0, both outputs",
-            rc == 0 and len(outs) == 2, f"rc={rc}, {[p.name for p in outs]}")
-    b.check("--run-preset: the wizard found the bundled PowerShell 7",
-            "copy_exif_to_TIFF_ps5" not in out and "powershell.exe" not in out.lower())
-    mtimes = {p.name: p.stat().st_mtime_ns for p in outs}
-    rc, _ = run_exe("preset_run2", ["--run-preset", "NIGHTLY ZIP"], host, env=env)
-    b.check("--run-preset again over its own output: rc 0, nothing rewritten",
-            rc == 0 and {p.name: p.stat().st_mtime_ns for p in outs} == mtimes, f"rc={rc}")
+    b.check("--list-presets: lists the presets",
+            rc == 0 and "NIGHTLY ZIP" in out and "SAVED BY V2" in out, f"rc={rc}")
+    for name, folder, tag in (("NIGHTLY ZIP", pre, "preset"), ("SAVED BY V2", pre_ps, "preset_v2")):
+        what = ("saved from another folder" if tag == "preset"
+                else "saved by the PowerShell edition")
+        rc, out = run_exe(f"{tag}_run1", ["--run-preset", name], host, env=env)
+        outs = sorted((folder / "ZIP").glob("*.tif"))
+        b.check(f"--run-preset ({what}): rc 0, both outputs",
+                rc == 0 and len(outs) == 2, f"rc={rc}, {[p.name for p in outs]}")
+        # The wizard wraps the command line it prints at the console width, inside the
+        # hostile folder name: compare without white space.
+        shown = _squash(out)
+        b.check(f"--run-preset ({what}): it ran this program's own backend",
+                _squash(exe) in shown
+                and _squash(scripts / "compress_tiff_zip.py") in shown
+                and _squash(old_copy) not in shown)
+        mtimes = {p.name: p.stat().st_mtime_ns for p in outs}
+        rc, _ = run_exe(f"{tag}_run2", ["--run-preset", name], host, env=env)
+        b.check(f"--run-preset ({what}) again over its own output: rc 0, nothing rewritten",
+                rc == 0 and {p.name: p.stat().st_mtime_ns for p in outs} == mtimes, f"rc={rc}")
 
 
 def main():
@@ -232,7 +220,7 @@ def main():
     repo = Path(os.environ.get("TIFFWORKFLOW_REPO", ROOT.parent / "tiff-workflow"))
 
     # Only the bundled tools: drop every PATH entry holding one of them, then
-    # the launcher's own environment (PATH, MAGICK_HOME, Bypass, sys.path).
+    # the launcher's own environment (PATH, MAGICK_HOME, sys.path).
     os.environ["PATH"] = os.pathsep.join(
         p for p in os.environ.get("PATH", "").split(os.pathsep)
         if p and not any((Path(p) / t).exists() for t in TOOL_EXES))
@@ -250,7 +238,8 @@ def main():
     assert Path(convert_tiff.__file__).parent == scripts, convert_tiff.__file__
     sys.path.insert(1, str(repo / "tools"))
     import real_photo_battery as b             # its `import convert_tiff` gets the one above
-    b.REPO = scripts                           # run() starts REPO / <backend>
+    b.REPO = scripts                           # run() starts REPO / <backend>...
+    b.RUNNER = [str(exe)]                      # ...through the program itself
     print(f"program: {exe}\nbattery: {repo / 'tools' / 'real_photo_battery.py'}", flush=True)
 
     work = Path(fixtures.anchor) / "twexe_battery_work"
@@ -263,7 +252,8 @@ def main():
         b.check("tiff-workflow.exe section completed without crashing", False,
                 f"{type(e).__name__}: {e}")
 
-    sys.argv = ["real_photo_battery.py", "--fixtures", str(fixtures), "--shells", "pwsh",
+    sys.argv = ["real_photo_battery.py", "--fixtures", str(fixtures),
+                "--lanes", "parallel,sequential",
                 "--scratch", str(Path(fixtures.anchor) / "twexe_battery")] \
         + (["--keep"] if args.keep else [])
     code = 1

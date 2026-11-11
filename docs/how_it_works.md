@@ -1,45 +1,64 @@
 # How it works
 
-## One program, a wizard and four scripts
+## One program, a wizard and three scripts
 
-tiff-workflow is a Python wizard (`convert_tiff.py`) and four PowerShell
-scripts it starts as separate processes: `compress_tiff_zip.ps1`,
-`copy_exif_to_TIFF_ps7.ps1` / `copy_exif_to_TIFF_ps5.ps1` (the same Copy
-EXIF for PowerShell 7 and 5.1) and `generate_thumbnails.ps1`. The wizard
-starts a script as `pwsh -NoProfile -File <script> ...`, finding `pwsh` on
-`PATH`, and the scripts call `exiftool` and `magick` the same way.
+tiff-workflow is a Python wizard (`convert_tiff.py`) and three Python
+scripts that do the work, the backends: `compress_tiff_zip.py`,
+`copy_exif_to_tiff.py` and `generate_thumbnails.py`, which share one module,
+`tiff_workflow_common.py`. The wizard starts a backend as a separate
+process, `<the Python that runs the wizard> <script> ...`
+(`sys.executable`), and the backends call `exiftool` and `magick`, finding
+them on `PATH`.
 
-The launcher (`src/tiff_workflow_exe.py`) routes its command line:
+In the program, the Python that runs the wizard is `tiff-workflow.exe`
+itself, so the wizard starts a backend as
+`tiff-workflow.exe <folder>\compress_tiff_zip.py ...`. The launcher
+(`src/tiff_workflow_exe.py`) is the Python that runs the scripts, and it
+only routes its command line:
 
 | Command line | Runs |
 |---|---|
-| `tiff-workflow.exe [options]` | `scripts\convert_tiff.py` (the wizard), through `runpy` as `__main__`, exactly as `python convert_tiff.py` would run it |
-| `tiff-workflow.exe compress\|copy-exif\|thumbnails ...` | `tools\pwsh\pwsh.exe -NoProfile -File scripts\<script>.ps1 ...`; its exit code is the program's |
+| `tiff-workflow.exe [options]` | `scripts\convert_tiff.py` (the wizard), exactly as `python convert_tiff.py` would run it |
+| `tiff-workflow.exe compress\|copy-exif\|thumbnails ...` | `scripts\compress_tiff_zip.py`, `scripts\copy_exif_to_tiff.py` or `scripts\generate_thumbnails.py` with the rest of the line |
+| `tiff-workflow.exe <path>\<a backend script>.py ...` | the same backend: this is how the wizard starts one. Only the script's name counts; the copy that runs is always the one in the program's own `scripts\` folder |
 
-The wizard finds its scripts next to itself (`scripts\`), so nothing in
-tiff-workflow is modified.
+Each script runs through `runpy` as `__main__`, in the program's own
+process: there is no second interpreter and no other program in between. A
+backend's exit code is the program's.
+
+The wizard finds its scripts next to itself (`scripts\`), and the backends
+find their shared module the same way, so nothing in tiff-workflow is
+modified.
+
+Up to v2.9.1 the backends were PowerShell scripts and the package carried
+PowerShell 7 to run them; that is described in the
+[v2.9.1-exe1](https://github.com/rsilvabr/tiff-workflow-exe/blob/v2.9.1-exe1/docs/how_it_works.md)
+version of this page. Since v3.0.0-exe1 there is no PowerShell in the
+package and nothing in it starts one. A preset saved by one of those
+versions holds a PowerShell command line; the wizard reads it and runs the
+Python backend with the same arguments.
 
 ## Python and its libraries
 
 PyInstaller builds a one-folder program: `tiff-workflow.exe` plus
 `_internal\` with Python 3.12, rich and every standard-library module the
-wizard imports. To find those modules the build imports the wizard as a
-module (`hiddenimports` in `tiff-workflow.spec`) and collects rich
-completely. The wizard also ships as a plain `.py` file in `scripts\`: that
-is what runs.
+scripts import. To find those modules the build imports the wizard as a
+module, names the standard-library modules the backends need
+(`hiddenimports` in `tiff-workflow.spec`) and collects rich completely. The
+wizard, the backends and their shared module ship as plain `.py` files in
+`scripts\`: those are what runs.
 
 ## The tools
 
-Before running anything the launcher puts `tools\pwsh`, `tools\exiftool`
-and `tools\imagemagick` first on `PATH`, and sets `MAGICK_HOME` to the
+Before running anything the launcher puts `tools\exiftool` and
+`tools\imagemagick` first on `PATH`, and sets `MAGICK_HOME` to the
 ImageMagick folder (the portable build reads its configuration there). The
-wizard detects PowerShell by trying `pwsh` first, so it finds the bundled
-PowerShell 7 ahead of one installed on the PC, and every process it starts
-inherits the same `PATH`.
+wizard and the backends find `exiftool` and `magick` there ahead of
+versions installed on the PC. A backend the wizard starts is the same
+launcher again, so it sets the same `PATH` itself.
 
 | Tool | Source | Notes |
 |---|---|---|
-| PowerShell 7.6.7 | the official portable `PowerShell-7.6.7-win-x64.zip` | the whole folder: modules and runtime files are loaded on demand |
 | ExifTool 13.59 | the official Windows build | `exiftool(-k).exe` is renamed `exiftool.exe`: the `(-k)` name waits for a key press after every call |
 | ImageMagick 7.1.2-27 | official portable Q16-HDRI x64 | only `magick.exe` and its `.xml`/`.icc` configuration; the other programs in the archive are aliases of it |
 
@@ -53,30 +72,25 @@ once (about 30 MB) to `%LOCALAPPDATA%\tiff-workflow\exiftool-<version>` (or
 copy. `build.py` writes the version into `tools\exiftool\VERSION.txt` for
 the folder name.
 
-## The execution policy
+## Nothing to allow, nothing sent
 
-Windows' default PowerShell execution policy (`Restricted`) runs no script
-at all, and `RemoteSigned`, the usual one after a change, refuses an
-unsigned script that carries the "from the internet" mark (an NTFS
-`Zone.Identifier` stream) — which every file of a downloaded zip gets when
-Explorer unzips it. The wizard starts its scripts without
-`-ExecutionPolicy`.
+The scripts are Python files read by the Python inside the program. Windows
+has no execution policy for them, and the "from the internet" mark (an NTFS
+`Zone.Identifier` stream) that every file of a downloaded zip gets when
+Explorer unzips it does not stop them: Python does not look at it. The
+launcher sets no policy and unblocks no file. The test battery still marks
+every file of the program as a download before it runs it.
 
-The launcher sets `PSExecutionPolicyPreference=Bypass` in its own
-environment. PowerShell reads that variable as the policy of its *Process*
-scope, so it applies to every PowerShell this program starts, directly or
-through the wizard, and to nothing else: the machine and user policies are
-not changed and no file is unblocked. A policy set through Group Policy
-(the *MachinePolicy* and *UserPolicy* scopes) takes precedence over it, as
-designed.
-
-It also sets `POWERSHELL_TELEMETRY_OPTOUT=1` and
-`POWERSHELL_UPDATECHECK=Off`: PowerShell 7 would otherwise send a telemetry
-ping when it starts.
+The launcher changes two environment variables, `PATH` and `MAGICK_HOME`,
+and switches its own output to UTF-8 (a redirected output would otherwise
+fall back to the ANSI code page, where a program folder named in Japanese
+cannot be printed). The only network request the program makes is
+the wizard's new-release notice (tiff-workflow's own feature; in the program
+it follows tiff-workflow-exe's releases).
 
 ## Logs
 
-The four scripts write their logs into `Logs\<script>\` under the current
+The three backends write their logs into `Logs\<script>\` under the current
 folder, and the wizard writes its own there too (its manifest-run summary
 goes to `Logs\convert_tiff\` next to the wizard, in `scripts\`). The launcher
 does not change the current folder: a double-click starts in the program
@@ -93,11 +107,11 @@ itself: `scripts\manifests\` in the program folder.
 `build.py`:
 
 1. creates `.venv` with the pinned packages (rich) and PyInstaller;
-2. downloads the tiff-workflow tag `TIFFWORKFLOW_TAG` from GitHub, takes the
-   wizard, the four scripts and the license, and checks that the wizard's
-   `TOOLKIT_VERSION` matches the tag;
-3. downloads the three tools, checks each SHA-256, and copies what is needed
-   into `build\app\tools`;
+2. downloads the tiff-workflow tag `TIFFWORKFLOW_TAG` from GitHub, takes
+   `convert_tiff.py`, the three backends, `tiff_workflow_common.py` and the
+   license, and checks that the wizard's `TOOLKIT_VERSION` matches the tag;
+3. downloads the two tools (ExifTool and ImageMagick), checks each SHA-256,
+   and copies what is needed into `build\app\tools`;
 4. runs PyInstaller with `tiff-workflow.spec` (the Windows version
    information is written from the tag);
 5. assembles `dist\tiff-workflow-<version>-x64\` and zips it.

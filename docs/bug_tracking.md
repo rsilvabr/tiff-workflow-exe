@@ -23,12 +23,21 @@ in the package), and two problems were handled before the first build:
 
 - Windows' default execution policy, and `RemoteSigned` for the files of a
   downloaded zip, refuse the scripts: the launcher sets the Process-scope
-  policy to Bypass ([How it works](how_it_works.md#the-execution-policy)).
+  policy to Bypass
+  ([How it works, as of v2.9.1-exe1](https://github.com/rsilvabr/tiff-workflow-exe/blob/v2.9.1-exe1/docs/how_it_works.md#the-execution-policy)).
   The battery runs the program from a copy whose files all carry the
   "from the internet" mark, and first checks that this PC's policy refuses
   such a script without the launcher.
 - PowerShell 7 sends a telemetry ping at start: turned off for the
   processes the program starts.
+
+*No longer applies since v3.0.0-exe1.* Both points describe v2.7.2-exe1 to
+v2.9.1-exe1, whose scripts were PowerShell. Since v3.0.0-exe1 the scripts
+are Python and there is no PowerShell in the package: the launcher sets no
+execution policy and no telemetry opt-out, because nothing it starts reads
+them. The battery still runs the program from a copy whose files carry the
+"from the internet" mark; its execution-policy control is gone
+([How it works](how_it_works.md#nothing-to-allow-nothing-sent)).
 
 Found in tiff-workflow while preparing it (fixed there, round 24, shipped
 in v2.7.2): a preset ran the scripts of the folder it was saved from, not

@@ -1,33 +1,34 @@
 """tiff-workflow.exe: the tiff-workflow toolkit as a Windows program, no Python needed.
 
-The wizard and the four PowerShell backends ship unchanged in `scripts/` next
-to the program; PowerShell 7, ExifTool and ImageMagick in `tools/`. This
-launcher only routes:
+The wizard, the three backends and their shared module ship unchanged, as plain
+`.py` files, in `scripts/` next to the program; ExifTool and ImageMagick in
+`tools/`. This launcher is the Python that runs them, and it only routes:
 
     tiff-workflow.exe                          the interactive wizard (convert_tiff.py)
     tiff-workflow.exe --run-preset NAME ...    the wizard, with its own options
     tiff-workflow.exe compress|copy-exif|thumbnails ARGS
-                                               one backend directly, under the
-                                               bundled PowerShell 7
+                                               one backend directly
+    tiff-workflow.exe <a backend script> ARGS  how the wizard starts a backend: it runs
+                                               `sys.executable <script> ARGS`, and here
+                                               sys.executable is this program
 
 Before running anything it puts tools/ first on PATH (the wizard and the
-backends find pwsh, exiftool and magick there) and sets the PowerShell
-execution policy of the processes it starts to Bypass: Windows' default
-policy refuses every .ps1, and one unzipped from a download carries the
-"from the internet" mark that RemoteSigned refuses too.
+backends find exiftool and magick there).
+
+Until v2.9.1 the backends were PowerShell scripts and the package carried
+PowerShell 7; since v3.0.0 they are Python and there is no PowerShell in it.
 """
 
 import os
 import runpy
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 BACKENDS = {
-    "compress": "compress_tiff_zip.ps1",
-    "copy-exif": "copy_exif_to_TIFF_ps7.ps1",
-    "thumbnails": "generate_thumbnails.ps1",
+    "compress": "compress_tiff_zip.py",
+    "copy-exif": "copy_exif_to_tiff.py",
+    "thumbnails": "generate_thumbnails.py",
 }
 WIZARD = "convert_tiff.py"
 
@@ -65,9 +66,9 @@ def _exiftool_dir() -> Path:
     ExifTool's Windows launcher looks for its exiftool_files folder through
     an ANSI path: in a program folder named in Japanese, Cyrillic or any
     script outside the ANSI code page it fails ("Could not find ...???...
-    perl5*.dll") while pwsh and magick work. The 8.3 short name of the
-    folder fixes that where the volume has short names (usually C:); on one
-    without them, ExifTool is copied once to an ANSI-safe folder.
+    perl5*.dll") while magick works. The 8.3 short name of the folder fixes
+    that where the volume has short names (usually C:); on one without them,
+    ExifTool is copied once to an ANSI-safe folder.
     """
     bundled = TOOLS / "exiftool"
     if not bundled.is_dir() or _ansi_safe(str(bundled)):
@@ -103,39 +104,41 @@ def _exiftool_dir() -> Path:
 
 
 def _setup_environment() -> None:
-    tool_dirs = [TOOLS / "pwsh", _exiftool_dir(), TOOLS / "imagemagick"]
+    tool_dirs = [_exiftool_dir(), TOOLS / "imagemagick"]
     found = [str(d) for d in tool_dirs if d.is_dir()]
     os.environ["PATH"] = os.pathsep.join(found + [os.environ.get("PATH", "")])
     # The portable ImageMagick reads its configuration from its own folder.
     if (TOOLS / "imagemagick").is_dir():
         os.environ.setdefault("MAGICK_HOME", str(TOOLS / "imagemagick"))
-    # The Process scope of every PowerShell this program starts; the machine's
-    # own policy is not changed. A policy set by Group Policy still wins.
-    os.environ["PSExecutionPolicyPreference"] = "Bypass"
-    # pwsh would otherwise send a telemetry ping at start: this program makes
-    # no network connections.
-    os.environ["POWERSHELL_TELEMETRY_OPTOUT"] = "1"
-    os.environ["POWERSHELL_UPDATECHECK"] = "Off"
     sys.path.insert(0, str(SCRIPTS))
 
 
-def _pwsh() -> str:
-    bundled = TOOLS / "pwsh" / "pwsh.exe"
-    return str(bundled) if bundled.is_file() else "pwsh"
+def _backend_script(argv):
+    """The backend script (in scripts/) and its arguments for a command line that asks for
+    one, else None: `compress|copy-exif|thumbnails ARGS`, or `<...>\\<backend>.py ARGS` as
+    the wizard writes it. Only the NAME of a script path counts: the copy that runs is
+    always the one in this program's own scripts/ folder."""
+    if not argv:
+        return None
+    first = argv[0]
+    name = BACKENDS.get(first.lower())
+    if name is None and Path(first).name in BACKENDS.values():
+        name = Path(first).name
+    if name is None:
+        return None
+    return SCRIPTS / name, list(argv[1:])
 
 
-def _backend_command(argv):
-    """The pwsh command line for `compress|copy-exif|thumbnails ARGS`, or None
-    when the command line is for the wizard."""
-    if argv and argv[0].lower() in BACKENDS:
-        script = SCRIPTS / BACKENDS[argv[0].lower()]
-        return [_pwsh(), "-NoProfile", "-File", str(script)] + list(argv[1:])
-    return None
+def _run_script(script: Path, args) -> None:
+    """Run a script of scripts/ as the main program, with `args`. Its exit code is the
+    program's (the scripts end with `sys.exit(main())`)."""
+    sys.argv = [str(script)] + list(args)
+    runpy.run_path(str(script), run_name="__main__")
 
 
 def main() -> None:
     # A redirected stdout falls back to the ANSI code page, where a program
-    # folder named in Japanese cannot be printed (the wizard does the same).
+    # folder named in Japanese cannot be printed (the scripts do the same).
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
@@ -143,15 +146,14 @@ def main() -> None:
             pass
     _setup_environment()
     argv = sys.argv[1:]
-    cmd = _backend_command(argv)
-    if cmd is not None:
+    backend = _backend_script(argv)
+    if backend is not None:
         try:
-            sys.exit(subprocess.run(cmd).returncode)
+            _run_script(*backend)
         except KeyboardInterrupt:
             sys.exit(130)
-    script = SCRIPTS / WIZARD
-    sys.argv = [str(script)] + list(argv)
-    runpy.run_path(str(script), run_name="__main__")
+        return
+    _run_script(SCRIPTS / WIZARD, argv)
 
 
 if __name__ == "__main__":

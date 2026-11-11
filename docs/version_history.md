@@ -6,12 +6,50 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
-| **[v2.9.1-exe1](#v291-exe1)** | 2026-11-11 | v2.9.1 | Fixes: a black-and-white photo stored as RGB stays RGB; Japanese IPTC survives; no swap leaves a photo's place empty |
+| **[v3.0.0-exe1](#v300-exe1)** | 2026-11-11 | v3.0.0 | The scripts are Python now: no PowerShell in the package, which is much smaller; same command line and results |
+| [v2.9.1-exe1](#v291-exe1) | 2026-11-11 | v2.9.1 | Fixes: a black-and-white photo stored as RGB stays RGB; Japanese IPTC survives; no swap leaves a photo's place empty |
 | [v2.9.0-exe1](#v290-exe1) | 2026-11-11 | v2.9.0 | A settings file instead of editing the scripts; Advanced options per run |
 | [v2.8.0-exe1](#v280-exe1) | 2026-11-10 | v2.8.0 | exiftool works with a temp folder outside the code page; an edit record in every compressed photo; release notice |
 | [v2.7.4-exe1](#v274-exe1) | 2026-11-07 | v2.7.4 | Modes 0/9 keep each original in place until its copy is ready; safe cross-drive staging |
 | [v2.7.3-exe1](#v273-exe1) | 2026-11-07 | v2.7.3 | Compress lists originals an interrupted mode 0/9 run left in `OLD_TIFFs` |
 | [v2.7.2-exe1](#v272-exe1) | 2026-10-25 | v2.7.2 | First package |
+
+---
+
+## v3.0.0-exe1
+
+*2026-11-11*
+
+- Packages tiff-workflow
+  [v3.0.0](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.0.0):
+  the scripts that do the work were rewritten from PowerShell to Python
+  (`compress_tiff_zip.py`, `generate_thumbnails.py`, one
+  `copy_exif_to_tiff.py` in place of the two Copy EXIF scripts, and the
+  module they share, `tiff_workflow_common.py`). The command line and the
+  results are the same: `tiff-workflow.exe compress|copy-exif|thumbnails`
+  take the parameters they took before.
+- PowerShell 7 is no longer in the package, and nothing in the program
+  needs or starts PowerShell: no execution policy to set, no `tools\pwsh\`.
+  The package is about 90 MB unzipped (36 MB zipped);
+  v2.9.1-exe1 was about 350 MB (140 MB zipped), more than two thirds of it
+  PowerShell 7.
+- The launcher runs the scripts itself: `tiff-workflow.exe` is the Python
+  the wizard starts its scripts with, and `compress`, `copy-exif` and
+  `thumbnails` run in the program's own process.
+- Several files at once is the scripts' default on any PC; it no longer
+  depends on PowerShell 7.
+- Presets saved by earlier versions keep working: the wizard reads their
+  PowerShell command lines and runs the Python script with the same
+  arguments.
+- ExifTool 13.59 and ImageMagick 7.1.2-27 (Q16-HDRI), the same versions as
+  before.
+- Battery: 423 checks pass -- the 394 of tiff-workflow's real-photo battery, run
+  through the program, and 29 on the program itself (each command, a preset
+  saved from another folder and one saved by the PowerShell edition).
+- [v2.9.1-exe1](https://github.com/rsilvabr/tiff-workflow-exe/releases/tag/v2.9.1-exe1)
+  is the last package with PowerShell 7 inside and stays available;
+  tiff-workflow describes that edition in
+  [The PowerShell edition](https://github.com/rsilvabr/tiff-workflow/blob/master/docs/powershell_edition.md).
 
 ---
 

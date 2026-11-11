@@ -2,7 +2,7 @@
 
 [tiff-workflow](https://github.com/rsilvabr/tiff-workflow) packaged as
 `tiff-workflow.exe`: no Python to install, and the tools it calls
-(PowerShell 7, ExifTool, ImageMagick) come in the same folder. Unzip and run.
+(ExifTool, ImageMagick) come in the same folder. Unzip and run.
 
 > **If you can use Python, use the Python version.**
 > [tiff-workflow](https://github.com/rsilvabr/tiff-workflow) itself is what
@@ -11,9 +11,9 @@
 > here is a newer way of packaging the same scripts, meant for people who
 > would rather not install Python and the tools themselves.
 
-**Current version: v2.9.1-exe1** (2026-11-11) · packages tiff-workflow
-[v2.9.1](https://github.com/rsilvabr/tiff-workflow/releases/tag/v2.9.1) ·
-PowerShell 7.6.7 · ExifTool 13.59 · ImageMagick 7.1.2-27 (Q16-HDRI) ·
+**Current version: v3.0.0-exe1** (2026-11-11) · packages tiff-workflow
+[v3.0.0](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.0.0) ·
+ExifTool 13.59 · ImageMagick 7.1.2-27 (Q16-HDRI) ·
 [All releases](docs/version_history.md) · [How it works](docs/how_it_works.md) ·
 [Bug tracking](docs/bug_tracking.md)
 
@@ -24,7 +24,7 @@ PowerShell 7.6.7 · ExifTool 13.59 · ImageMagick 7.1.2-27 (Q16-HDRI) ·
 - [What it is](#what-it-is)
 - [Download and first run](#download-and-first-run) · [Verifying a download](#verifying-a-download)
 - [Command line](#command-line)
-- [PowerShell and the execution policy](#powershell-and-the-execution-policy)
+- [No PowerShell since v3.0.0](#no-powershell-since-v300)
 - [Where settings, presets and logs go](#where-settings-presets-and-logs-go)
 - [Updating and removing](#updating-and-removing)
 - [What is in the folder](#what-is-in-the-folder)
@@ -44,12 +44,14 @@ original is replaced. Everything it does is described in its own
 [README](https://github.com/rsilvabr/tiff-workflow#readme) and documentation;
 this repository only packages it:
 
-- The wizard (`convert_tiff.py`) and the four PowerShell scripts inside are
-  **byte-for-byte** those of the tiff-workflow release named above. No
-  feature is added or removed.
-- A small launcher starts them, puts the bundled tools first on `PATH`, and
-  lets PowerShell run the bundled scripts
-  ([below](#powershell-and-the-execution-policy)).
+- The wizard (`convert_tiff.py`), the three Python scripts that do the work
+  (`compress_tiff_zip.py`, `copy_exif_to_tiff.py`, `generate_thumbnails.py`)
+  and the module they share (`tiff_workflow_common.py`) are **byte-for-byte**
+  those of the tiff-workflow release named above. No feature is added or
+  removed.
+- A small launcher runs them with the Python inside the program and puts the
+  bundled tools first on `PATH`. Nothing else is needed on the PC
+  ([no PowerShell](#no-powershell-since-v300) either).
 - Each version of this package names the tiff-workflow version it carries
   (`v2.7.2-exe1` = tiff-workflow v2.7.2, first package of it).
 
@@ -74,7 +76,7 @@ GitHub records a build attestation for the zip and `tiff-workflow.exe`. With
 the [GitHub CLI](https://cli.github.com/):
 
 ```
-gh attestation verify tiff-workflow-2.9.0-exe1-x64.zip --repo rsilvabr/tiff-workflow-exe
+gh attestation verify tiff-workflow-3.0.0-exe1-x64.zip --repo rsilvabr/tiff-workflow-exe
 ```
 
 It names the commit and the workflow run the file came from, and fails for a
@@ -89,18 +91,23 @@ From a terminal (`cmd` or PowerShell) in the program's folder:
 tiff-workflow.exe                                 the interactive wizard
 tiff-workflow.exe --run-preset "NIGHTLY ZIP"      a preset saved in the wizard, unattended
 tiff-workflow.exe --list-presets
-tiff-workflow.exe compress   -Mode 1 -InputDir "F:\Photos"     (compress_tiff_zip.ps1)
-tiff-workflow.exe copy-exif  -InputDir "F:\Fuji\S5pro"         (copy_exif_to_TIFF_ps7.ps1)
-tiff-workflow.exe thumbnails -InputDir "F:\Photos" -Size 256   (generate_thumbnails.ps1)
+tiff-workflow.exe compress   -Mode 1 -InputDir "F:\Photos"     (compress_tiff_zip.py)
+tiff-workflow.exe copy-exif  -InputDir "F:\Fuji\S5pro"         (copy_exif_to_tiff.py)
+tiff-workflow.exe thumbnails -InputDir "F:\Photos" -Size 256   (generate_thumbnails.py)
 ```
 
 Each `compress`/`copy-exif`/`thumbnails` line takes exactly what the
-matching PowerShell script takes, and runs it under the bundled
-PowerShell 7: tiff-workflow's per-script documentation applies word for
-word — replace `pwsh -NoProfile -File compress_tiff_zip.ps1` with
-`tiff-workflow.exe compress`, and so on. Always pass `-InputDir`: without
-it, a script works on the folder the terminal is in. `copy-exif` is the
-parallel PowerShell 7 version of Copy EXIF.
+matching tiff-workflow script takes, and its exit code is the script's.
+tiff-workflow's per-script documentation applies word for word — replace
+`python compress_tiff_zip.py` with `tiff-workflow.exe compress`,
+`python copy_exif_to_tiff.py` with `tiff-workflow.exe copy-exif` and
+`python generate_thumbnails.py` with `tiff-workflow.exe thumbnails`. The
+parameters are the same ones the PowerShell scripts of earlier versions
+had. Always pass `-InputDir`: without it, a script works on the folder the
+terminal is in.
+
+The scripts work on several files at once by default, on any PC;
+`-ForceSequential` turns that off.
 
 A preset can be run from a scheduled task or a shortcut:
 
@@ -111,23 +118,19 @@ A preset can be run from a scheduled task or a shortcut:
 Give the task a *Start in* folder you can write to: the logs go to `Logs\`
 there.
 
-## PowerShell and the execution policy
+## No PowerShell since v3.0.0
 
-The work is done by PowerShell scripts. Windows' default execution policy
-refuses to run any `.ps1` file, and the files of a zip unzipped from a
-download carry a "from the internet" mark that the common `RemoteSigned`
-policy refuses as well. So the launcher sets the policy of the PowerShell
-processes it starts to `Bypass` (the `PSExecutionPolicyPreference`
-environment variable, read by PowerShell as its *Process* scope). Your PC's
-own policy is not changed, nothing is unblocked on disk, and a PowerShell
-you open yourself behaves as before.
+Up to v2.9.1 the work was done by PowerShell scripts, and the package
+carried PowerShell 7 to run them. Since v3.0.0 the scripts are Python and
+run in the program itself: there is no PowerShell in the package, nothing in
+it starts one, and there is no execution policy to set or think about.
+Presets saved by an earlier version keep working: they run the Python
+scripts with the same arguments.
 
-A policy set by your organisation through Group Policy still wins over
-that; the scripts then cannot run from this program either.
-
-PowerShell 7 comes in the package, so Copy EXIF and the compression always
-run in parallel; a PowerShell 7 installed on the PC is not used, and
-Windows' own PowerShell 5.1 is not needed.
+[v2.9.1-exe1](https://github.com/rsilvabr/tiff-workflow-exe/releases/tag/v2.9.1-exe1)
+is the last package with PowerShell 7 inside and stays available.
+tiff-workflow describes that edition, and what changed with v3.0.0, in
+[The PowerShell edition](https://github.com/rsilvabr/tiff-workflow/blob/master/docs/powershell_edition.md).
 
 ## Where settings, presets and logs go
 
@@ -154,9 +157,8 @@ Nothing goes to the Windows registry.
 
 | Path | What |
 |---|---|
-| `tiff-workflow.exe`, `_internal\` | Python 3.12 and the library the wizard uses (rich) |
-| `scripts\` | The tiff-workflow wizard and its four PowerShell scripts, unchanged |
-| `tools\pwsh\` | PowerShell 7.6.7, the official portable build (`PowerShell-7.6.7-win-x64.zip`) |
+| `tiff-workflow.exe`, `_internal\` | Python 3.12, which runs the scripts, and the library the wizard uses (rich) |
+| `scripts\` | The tiff-workflow scripts, unchanged: the wizard (`convert_tiff.py`), `compress_tiff_zip.py`, `copy_exif_to_tiff.py`, `generate_thumbnails.py` and the module those three share (`tiff_workflow_common.py`) |
 | `tools\exiftool\` | ExifTool 13.59 (Windows build) |
 | `tools\imagemagick\` | `magick.exe` 7.1.2-27 portable (Q16-HDRI) and its configuration |
 | `licenses\` | The licenses of everything above, Python's included (gathered by `build.py` from each download, so the folder is in the package, not in this repository) |
@@ -169,16 +171,20 @@ installed on the PC: tiff-workflow was tested with exactly these.
 - **Antivirus:** some engines flag unsigned programs built with PyInstaller.
   This package uses the one-folder layout, the one they object to least; if
   yours quarantines a file, restore it and add the folder as an exception.
-- **Size:** about 350 MB unzipped (140 MB zipped), more than two thirds of
-  it PowerShell 7.
-- **Speed:** the work runs exactly as fast as with Python and PowerShell 7
+- **Size:** about 90 MB unzipped (36 MB zipped).
+- **Speed:** the work runs exactly as fast as with Python and the tools
   installed (the same scripts and tools do it).
 - **Paths:** folders with Japanese or other non-Latin names, brackets,
   spaces, `%` and `&` are supported and tested, for the photos and for the
   program's own folder.
 - **No network:** the program converts the files and folders you point it
-  at, on your PC. PowerShell's telemetry and update check are turned off for
-  the processes it starts.
+  at, on your PC, and sends nothing about them anywhere. The one request it
+  makes is the wizard's new-release notice: the main menu asks GitHub once a
+  day for the latest release of this program (anonymous, nothing else sent;
+  never for `--run-preset` or the `compress`/`copy-exif`/`thumbnails`
+  commands). Turn it off with `"check_for_updates": false` in
+  `%USERPROFILE%\.convert_tiff_config.json` or the environment variable
+  `TIFFWORKFLOW_NO_UPDATE_CHECK`.
 - **Bugs:** a problem with what tiff-workflow *does* (a compression, a
   thumbnail, the EXIF copy) belongs in
   [tiff-workflow's issues](https://github.com/rsilvabr/tiff-workflow/issues);
@@ -189,16 +195,18 @@ installed on the PC: tiff-workflow was tested with exactly these.
 
 `python tests/battery_on_exe.py` runs tiff-workflow's real-photo battery
 (`tools/real_photo_battery.py` from a tiff-workflow checkout next to this
-one) against the built program's scripts, under the bundled PowerShell 7,
-with only the bundled pwsh, exiftool and magick on `PATH`. Before it, a
-section of its own drives `tiff-workflow.exe` itself: each command, the
-help, a preset saved from another folder (run twice), and the execution
-policy.
+one) against the built program's scripts, with only the bundled exiftool
+and magick on `PATH`. The scripts are started through `tiff-workflow.exe`
+itself (the battery's "python" is the program), both several files at once
+and one at a time. Before it, a section of its own drives
+`tiff-workflow.exe`: the help, each command, a preset saved from another
+folder and a preset saved by the PowerShell edition (each run twice).
 
 The program runs from a copy in a folder named `伊豆沼 [app] 100% & co` on a
 drive without 8.3 short names, and every file of that copy carries the
 "downloaded from the internet" mark, as after unzipping a download in
-Explorer. The photos (camera exports, film scans with an IR page, Fuji S5
+Explorer (Python does not look at the mark; the test keeps it so that the
+program is run as a download leaves it). The photos (camera exports, film scans with an IR page, Fuji S5
 Pro sessions, TIFFs that lost every tag) are processed in folders with
 Japanese, brackets, spaces and `%`. Each release runs it against the zip
 GitHub built, before the release is published; the release notes give the
@@ -223,16 +231,14 @@ Details: [How it works](docs/how_it_works.md).
 ## License
 
 MIT for this packaging (see [LICENSE](LICENSE)). The package also contains
-tiff-workflow (MIT), PowerShell (MIT, with the notices of its own
-components), ExifTool (the same terms as Perl: GPL or Artistic License),
-ImageMagick (its own Apache-2.0-style license) and Python with rich (PSF
-and MIT). They are listed in `licenses\` and in the PyInstaller-collected
-notices under `_internal\`.
+tiff-workflow (MIT), ExifTool (the same terms as Perl: GPL or Artistic
+License), ImageMagick (its own Apache-2.0-style license) and Python with
+rich (PSF and MIT). They are listed in `licenses\` and in the
+PyInstaller-collected notices under `_internal\`.
 
 ## Acknowledgments
 
-- [PowerShell](https://github.com/PowerShell/PowerShell),
-  [ExifTool](https://exiftool.org) (Phil Harvey) and
+- [ExifTool](https://exiftool.org) (Phil Harvey) and
   [ImageMagick](https://imagemagick.org), which do the real work
 - [PyInstaller](https://pyinstaller.org), which makes the Python program a
   Windows one

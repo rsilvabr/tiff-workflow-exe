@@ -54,7 +54,7 @@ jobs:
           python -m pip install --quiet --disable-pip-version-check pytest
           python -m pytest tests -q --ignore=tests/battery_on_exe.py
 
-      - name: The program starts (wizard help, a backend under the bundled pwsh)
+      - name: The program starts (wizard help, a backend run by the program itself)
         shell: pwsh
         run: |
           $exe = (Get-Item dist\*\tiff-workflow.exe).FullName

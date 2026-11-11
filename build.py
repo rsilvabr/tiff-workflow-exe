@@ -26,13 +26,10 @@ import zipfile
 from pathlib import Path
 
 # --- settings --------------------------------------------------------------
-TIFFWORKFLOW_TAG = "v2.9.1"
+TIFFWORKFLOW_TAG = "v3.0.0"
 # Package revision for this tiff-workflow tag: v2.7.2 + 1 -> release "v2.7.2-exe1".
 PACKAGE_REVISION = 1
 TOOLS = {
-    "pwsh": ("https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/"
-             "PowerShell-7.6.7-win-x64.zip",
-             "d2f952ebdbf24386cb8923553aa58e41a846db35a6155ea04c58142a4b16dbb7"),
     "exiftool": ("https://sourceforge.net/projects/exiftool/files/"
                  "exiftool-13.59_64.zip/download",
                  "44b512b25af500724ba579d0a53c8fc5851628b692dd5e5d94ae4a15c2cba9ec"),
@@ -47,8 +44,10 @@ ROOT = Path(__file__).resolve().parent
 DEPS, BUILD, DIST = ROOT / "deps", ROOT / "build", ROOT / "dist"
 VENV = ROOT / ".venv"
 WINTAR = Path(r"C:\Windows\System32\tar.exe")   # bsdtar: reads .zip and .7z
-SCRIPT_NAMES = ["convert_tiff.py", "compress_tiff_zip.ps1", "generate_thumbnails.ps1",
-                "copy_exif_to_TIFF_ps7.ps1", "copy_exif_to_TIFF_ps5.ps1"]
+# The wizard, the three backends and the module they share (Python since tiff-workflow
+# v3.0.0; they were PowerShell scripts before, and the package carried PowerShell 7).
+SCRIPT_NAMES = ["convert_tiff.py", "compress_tiff_zip.py", "copy_exif_to_tiff.py",
+                "generate_thumbnails.py", "tiff_workflow_common.py"]
 
 
 def rmtree(path):
@@ -124,17 +123,8 @@ def get_scripts(app, local=None):
 
 
 def get_tools(app):
-    step("tools (PowerShell 7, exiftool, ImageMagick)")
+    step("tools (exiftool, ImageMagick)")
     tools, lic = app / "tools", app / "licenses"
-    url, sha = TOOLS["pwsh"]
-    x = extract(fetch(url, DEPS / Path(url).name, sha), BUILD / "x_pwsh")
-    src = next(x.rglob("pwsh.exe")).parent
-    # The whole folder: pwsh is a .NET program whose modules and runtime files
-    # are loaded on demand, so nothing in it can be left out safely.
-    shutil.copytree(src, tools / "pwsh")
-    shutil.copy2(src / "LICENSE.txt", lic / "LICENSE.powershell.txt")
-    shutil.copy2(src / "ThirdPartyNotices.txt", lic / "ThirdPartyNotices.powershell.txt")
-
     url, sha = TOOLS["exiftool"]
     x = extract(fetch(url, DEPS / "exiftool-13.59_64.zip", sha), BUILD / "x_exiftool")
     src = next(x.rglob("exiftool(-k).exe")).parent
