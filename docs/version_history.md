@@ -6,11 +6,28 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
-| **[v2.9.0-exe1](#v290-exe1)** | 2026-11-11 | v2.9.0 | A settings file instead of editing the scripts; Advanced options per run |
+| **[v2.9.1-exe1](#v291-exe1)** | 2026-11-11 | v2.9.1 | Fixes: a black-and-white photo stored as RGB stays RGB; Japanese IPTC survives; no swap leaves a photo's place empty |
+| [v2.9.0-exe1](#v290-exe1) | 2026-11-11 | v2.9.0 | A settings file instead of editing the scripts; Advanced options per run |
 | [v2.8.0-exe1](#v280-exe1) | 2026-11-10 | v2.8.0 | exiftool works with a temp folder outside the code page; an edit record in every compressed photo; release notice |
 | [v2.7.4-exe1](#v274-exe1) | 2026-11-07 | v2.7.4 | Modes 0/9 keep each original in place until its copy is ready; safe cross-drive staging |
 | [v2.7.3-exe1](#v273-exe1) | 2026-11-07 | v2.7.3 | Compress lists originals an interrupted mode 0/9 run left in `OLD_TIFFs` |
 | [v2.7.2-exe1](#v272-exe1) | 2026-10-25 | v2.7.2 | First package |
+
+---
+
+## v2.9.1-exe1
+
+*2026-11-11*
+
+- Packages tiff-workflow
+  [v2.9.1](https://github.com/rsilvabr/tiff-workflow/releases/tag/v2.9.1),
+  fixes only: a black-and-white photo stored as RGB stays RGB when
+  compressed (it used to come out with one gray channel and the RGB profile
+  still in it -- if you compressed such files with an earlier version, see
+  that release's notes), IPTC text outside Latin survives, and replacing a
+  file is a single rename everywhere, so no swap can leave a photo's place
+  empty.
+- Same bundled tools as v2.7.2-exe1.
 
 ---
 
