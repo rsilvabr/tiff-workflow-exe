@@ -8,8 +8,9 @@ scripts: every backend is started through tiff-workflow.exe itself (the
 battery's "Python" is the program), and the only exiftool and magick on PATH
 are the bundled ones (the battery's own checks use them too). Before it, a
 section of its own drives tiff-workflow.exe: --help, each backend command, a
-preset saved from another folder and one saved by the PowerShell edition
-(v2.x), each run twice.
+setting edited in scripts/ (it must count: the package is not bundled), a
+preset of v3.1 run twice, and presets saved by v3.0.0 and by the PowerShell
+edition (v2.x), which must be refused with nothing written.
 
 The program runs from a copy in a HOSTILE folder on the fixtures' drive
 (Japanese, brackets, a space, % and &), and every file of that copy carries
@@ -90,9 +91,9 @@ def exe_checks(b, exe, app, fixtures, work):
     for name in ("A.tif", "B.tif"):
         shutil.copy2(plain / name, comp / name)
 
-    rc, _ = run_exe("compress", ["compress", "-Mode", "1", "-InputDir", comp, "-Workers", "2"],
+    rc, _ = run_exe("compress", ["compress", "--mode", "1", "--input-dir", comp, "--workers", "2"],
                     host)
-    b.check("compress -Mode 1: rc 0", rc == 0, f"rc={rc}")
+    b.check("compress --mode 1: rc 0", rc == 0, f"rc={rc}")
     for name in ("A.tif", "B.tif"):
         out_f = comp / "ZIP" / name
         ok = out_f.is_file()
@@ -112,8 +113,8 @@ def exe_checks(b, exe, app, fixtures, work):
             any((host / "Logs").rglob("*.log")))
 
     thumbs = host / "thumbs out"
-    rc, _ = run_exe("thumbnails", ["thumbnails", "-InputDir", comp, "-OutputDir", thumbs,
-                                   "-Size", "256"], host)
+    rc, _ = run_exe("thumbnails", ["thumbnails", "--input-dir", comp, "--output-dir", thumbs,
+                                   "--size", "256"], host)
     made = sorted(thumbs.glob("*.jpg")) if thumbs.is_dir() else []
     b.check("thumbnails: rc 0, one JPEG per TIFF", rc == 0 and len(made) == 2,
             f"rc={rc}, {[p.name for p in made]}")
@@ -123,11 +124,33 @@ def exe_checks(b, exe, app, fixtures, work):
         w, h = (int(v) for v in r.stdout.split()[:2])
         b.check(f"thumbnails: {p.name} fits 256 px", max(w, h) == 256, f"{w}x{h}")
 
+    # The package runs from the plain files of scripts/ (tiff-workflow.spec leaves it out of
+    # the bundle): a default edited there is the one the program uses.
+    gt = scripts / "tiff_workflow" / "generate_thumbnails.py"
+    original = gt.read_bytes()
+    edited = original.replace(b'P("size", "int", 256)', b'P("size", "int", 200)', 1)
+    b.check("edited default: the size default is where the test edits it", edited != original)
+    gt.write_bytes(edited)
+    try:
+        thumbs2 = host / "thumbs edited"
+        rc, _ = run_exe("thumbnails_edited_default",
+                        ["thumbnails", "--input-dir", comp, "--output-dir", thumbs2], host)
+        made2 = sorted(thumbs2.glob("*.jpg")) if thumbs2.is_dir() else []
+        sizes = []
+        for p in made2:
+            r = subprocess.run(["magick", "identify", "-format", "%w %h", str(p)],
+                               capture_output=True, text=True)
+            sizes.append(max(int(v) for v in r.stdout.split()[:2]))
+        b.check("edited default: the program used the size edited in scripts/ (200 px)",
+                rc == 0 and len(made2) == 2 and sizes == [200, 200], f"rc={rc}, {sizes}")
+    finally:
+        gt.write_bytes(original)
+
     tagless = fixtures / "TIFF_tagless" / "S5Pro"
     if tagless.is_dir():
         s5 = host / "S5Pro [CULL]"
         shutil.copytree(tagless, s5)
-        rc, _ = run_exe("copy-exif", ["copy-exif", "-InputDir", s5, "-Workers", "2"], host)
+        rc, _ = run_exe("copy-exif", ["copy-exif", "--input-dir", s5, "--workers", "2"], host)
         b.check("copy-exif: rc 0", rc == 0, f"rc={rc}")
         for tif in sorted(p for p in s5.iterdir() if p.suffix.lower() in (".tif", ".tiff")):
             pair = b.find_pair(tif)
@@ -139,9 +162,9 @@ def exe_checks(b, exe, app, fixtures, work):
     else:
         b.skips.append("copy-exif via the exe skipped: no TIFF_tagless/S5Pro fixture")
 
-    # A preset saved by another copy of the toolkit (the config file is shared
-    # with the Python version): it must run THIS program's backend.
-    import convert_tiff
+    # A preset of v3.1 keeps each step as [subcommand, *args] (the config file is shared with
+    # the Python version): it runs THIS program's backend, through its own convert_tiff.py.
+    from tiff_workflow import wizard as convert_tiff
     home = work / "home [ユーザー]"
     home.mkdir()
     pre = host / "preset"
@@ -150,47 +173,55 @@ def exe_checks(b, exe, app, fixtures, work):
         shutil.copy2(plain / name, pre / name)
     wf = {"mode": 1, "workers": 2, "staging": "", "dry_run": False}
     cmd = convert_tiff.build_compress_command(wf, folders=[pre])
-    old_copy = work / "old version (deleted)"
-    cmd[1] = str(old_copy / "compress_tiff_zip.py")
+    line = convert_tiff._journal_line(cmd)
 
-    def entry(command, folder):
+    def entry(commands, folder):
         return {"kind": "compress", "label": f"Compress TIFFs -- mode 1 -- {folder}",
-                "commands": [command], "time": "2026-10-25 03:00:00", "manifest_path": None,
+                "commands": commands, "time": "2026-10-25 03:00:00", "manifest_path": None,
                 "manifest_workflow": None, "manifest_default_mode": None, "autofind": None}
 
-    # ...and one saved by the PowerShell edition (up to v2.9.1): `pwsh -File <script>.ps1`
-    # with the same arguments. It must run this program's Python backend.
-    pre_ps = host / "preset v2"
-    pre_ps.mkdir()
-    for name in ("A.tif", "B.tif"):
-        shutil.copy2(plain / name, pre_ps / name)
-    ps_cmd = (["pwsh", "-NoProfile", "-File", str(old_copy / ("compress_tiff_zip" + ".ps1"))]
-              + [a.replace(str(pre), str(pre_ps)) for a in cmd[2:]])
+    # What v3.0.0 saved ([python, <its folder>\compress_tiff_zip.py, -Mode 1 ...]) and what the
+    # PowerShell edition saved (pwsh -File <script>.ps1, up to v2.9.1): since v3.1 both are
+    # refused whole, nothing runs (the journal of v3.1 has one form).
+    old_copy = work / "old version (deleted)"
+    pre_old = {tag: host / f"preset {tag}" for tag in ("v3.0", "v2")}
+    for folder in pre_old.values():
+        folder.mkdir()
+        for name in ("A.tif", "B.tif"):
+            shutil.copy2(plain / name, folder / name)
+    old_args = ["-Mode", "1", "-Workers", "2"]
+    v30_cmd = [str(exe), str(old_copy / "compress_tiff_zip.py"), "-InputDir", str(pre_old["v3.0"])] + old_args
+    ps_cmd = (["pwsh", "-NoProfile", "-File", str(old_copy / ("compress_tiff_zip" + ".ps1")),
+               "-InputDir", str(pre_old["v2"])] + old_args)
     (home / ".convert_tiff_config.json").write_text(
-        json.dumps({"presets": {"NIGHTLY ZIP": entry(cmd, pre),
-                                "SAVED BY V2": entry(ps_cmd, pre_ps)}}), encoding="utf-8")
+        json.dumps({"presets": {"NIGHTLY ZIP": entry([line], pre),
+                                "SAVED BY V3.0": entry([v30_cmd], pre_old["v3.0"]),
+                                "SAVED BY V2": entry([ps_cmd], pre_old["v2"])}}), encoding="utf-8")
     env = dict(os.environ, USERPROFILE=str(home), HOME=str(home))
     rc, out = run_exe("list-presets", ["--list-presets"], host, env=env)
     b.check("--list-presets: lists the presets",
-            rc == 0 and "NIGHTLY ZIP" in out and "SAVED BY V2" in out, f"rc={rc}")
-    for name, folder, tag in (("NIGHTLY ZIP", pre, "preset"), ("SAVED BY V2", pre_ps, "preset_v2")):
-        what = ("saved from another folder" if tag == "preset"
-                else "saved by the PowerShell edition")
-        rc, out = run_exe(f"{tag}_run1", ["--run-preset", name], host, env=env)
-        outs = sorted((folder / "ZIP").glob("*.tif"))
-        b.check(f"--run-preset ({what}): rc 0, both outputs",
-                rc == 0 and len(outs) == 2, f"rc={rc}, {[p.name for p in outs]}")
-        # The wizard wraps the command line it prints at the console width, inside the
-        # hostile folder name: compare without white space.
-        shown = _squash(out)
-        b.check(f"--run-preset ({what}): it ran this program's own backend",
-                _squash(exe) in shown
-                and _squash(scripts / "compress_tiff_zip.py") in shown
-                and _squash(old_copy) not in shown)
-        mtimes = {p.name: p.stat().st_mtime_ns for p in outs}
-        rc, _ = run_exe(f"{tag}_run2", ["--run-preset", name], host, env=env)
-        b.check(f"--run-preset ({what}) again over its own output: rc 0, nothing rewritten",
-                rc == 0 and {p.name: p.stat().st_mtime_ns for p in outs} == mtimes, f"rc={rc}")
+            rc == 0 and all(n in out for n in ("NIGHTLY ZIP", "SAVED BY V3.0", "SAVED BY V2")),
+            f"rc={rc}")
+    rc, out = run_exe("preset_run1", ["--run-preset", "NIGHTLY ZIP"], host, env=env)
+    outs = sorted((pre / "ZIP").glob("*.tif"))
+    b.check("--run-preset (v3.1): rc 0, both outputs", rc == 0 and len(outs) == 2,
+            f"rc={rc}, {[p.name for p in outs]}")
+    # The wizard wraps the command line it prints at the console width, inside the hostile
+    # folder name: compare without white space.
+    shown = _squash(out)
+    b.check("--run-preset (v3.1): it ran this program's own backend",
+            _squash(exe) in shown and _squash(scripts / "convert_tiff.py") in shown)
+    mtimes = {p.name: p.stat().st_mtime_ns for p in outs}
+    rc, _ = run_exe("preset_run2", ["--run-preset", "NIGHTLY ZIP"], host, env=env)
+    b.check("--run-preset (v3.1) again over its own output: rc 0, nothing rewritten",
+            rc == 0 and {p.name: p.stat().st_mtime_ns for p in outs} == mtimes, f"rc={rc}")
+    for name, tag in (("SAVED BY V3.0", "v3.0"), ("SAVED BY V2", "v2")):
+        folder = pre_old[tag]
+        before = sorted(p.name for p in folder.rglob("*"))
+        rc, out = run_exe(f"preset_{tag}", ["--run-preset", name], host, env=env)
+        b.check(f"--run-preset (saved by {tag}): refused, rc 1, nothing written",
+                rc == 1 and "cannot be replayed" in out
+                and sorted(p.name for p in folder.rglob("*")) == before, f"rc={rc}")
 
 
 def main():
@@ -234,10 +265,10 @@ def main():
                           or "tiff-workflow" in found), (t, found)
         print(f"{t}: {found}", flush=True)
 
-    import convert_tiff                        # the PACKAGE's wizard (sys.path[0])
-    assert Path(convert_tiff.__file__).parent == scripts, convert_tiff.__file__
+    from tiff_workflow import wizard as convert_tiff   # the PACKAGE's wizard (sys.path[0])
+    assert Path(convert_tiff.__file__).parent == scripts / "tiff_workflow", convert_tiff.__file__
     sys.path.insert(1, str(repo / "tools"))
-    import real_photo_battery as b             # its `import convert_tiff` gets the one above
+    import real_photo_battery as b             # its wizard import gets the one above
     b.REPO = scripts                           # run() starts REPO / <backend>...
     b.RUNNER = [str(exe)]                      # ...through the program itself
     print(f"program: {exe}\nbattery: {repo / 'tools' / 'real_photo_battery.py'}", flush=True)

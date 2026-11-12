@@ -4,7 +4,7 @@ of a published tiff-workflow tag, and the tools they call.
     python build.py            (Python 3.12 on PATH; first run ~5 minutes)
 
 Everything downloaded is pinned: the tiff-workflow scripts come from the tag
-below (TOOLKIT_VERSION inside must match it), the tools from their official
+below (TOOLKIT_VERSION in tiff_workflow/__init__.py must match it), the tools from their official
 releases with a SHA-256 check. A virtual environment in .venv holds the
 pinned Python packages and PyInstaller, so the system Python is not touched.
 
@@ -26,7 +26,7 @@ import zipfile
 from pathlib import Path
 
 # --- settings --------------------------------------------------------------
-TIFFWORKFLOW_TAG = "v3.0.0"
+TIFFWORKFLOW_TAG = "v3.1.0"
 # Package revision for this tiff-workflow tag: v2.7.2 + 1 -> release "v2.7.2-exe1".
 PACKAGE_REVISION = 1
 TOOLS = {
@@ -44,10 +44,11 @@ ROOT = Path(__file__).resolve().parent
 DEPS, BUILD, DIST = ROOT / "deps", ROOT / "build", ROOT / "dist"
 VENV = ROOT / ".venv"
 WINTAR = Path(r"C:\Windows\System32\tar.exe")   # bsdtar: reads .zip and .7z
-# The wizard, the three backends and the module they share (Python since tiff-workflow
-# v3.0.0; they were PowerShell scripts before, and the package carried PowerShell 7).
-SCRIPT_NAMES = ["convert_tiff.py", "compress_tiff_zip.py", "copy_exif_to_tiff.py",
-                "generate_thumbnails.py", "tiff_workflow_common.py"]
+# The toolkit since tiff-workflow v3.1: the entry point and the package (every .py in it; the
+# wizard, the three backends, what they share). v3.0.x shipped five loose scripts; up to v2.9.1
+# the backends were PowerShell scripts, and the package carried PowerShell 7.
+ENTRY = "convert_tiff.py"
+PACKAGE = "tiff_workflow"
 
 
 def rmtree(path):
@@ -98,27 +99,36 @@ def venv_python():
 
 def get_scripts(app, local=None):
     dest = app / "scripts"
-    dest.mkdir(parents=True)
+    (dest / PACKAGE).mkdir(parents=True)
     out_license = app / "licenses" / "LICENSE.tiff-workflow"
     if local:
         step(f"tiff-workflow scripts from {local} (test build, not the tag)")
-        for name in SCRIPT_NAMES:
-            shutil.copy2(Path(local) / name, dest / name)
-        shutil.copy2(Path(local) / "LICENSE", out_license)
+        local = Path(local)
+        shutil.copy2(local / ENTRY, dest / ENTRY)
+        for f in sorted((local / PACKAGE).glob("*.py")):
+            shutil.copy2(f, dest / PACKAGE / f.name)
+        shutil.copy2(local / "LICENSE", out_license)
     else:
         step(f"tiff-workflow {TIFFWORKFLOW_TAG} scripts")
         z = fetch(f"https://github.com/rsilvabr/tiff-workflow/archive/refs/tags/"
                   f"{TIFFWORKFLOW_TAG}.zip", DEPS / f"tiff-workflow-{TIFFWORKFLOW_TAG}.zip")
         with zipfile.ZipFile(z) as zf:
             top = zf.namelist()[0].split("/")[0]
-            for name in SCRIPT_NAMES:
-                (dest / name).write_bytes(zf.read(f"{top}/{name}"))
+            (dest / ENTRY).write_bytes(zf.read(f"{top}/{ENTRY}"))
+            for name in zf.namelist():
+                rel = name[len(top) + 1:]
+                if rel.startswith(PACKAGE + "/") and rel.endswith(".py") and rel.count("/") == 1:
+                    (dest / rel).write_bytes(zf.read(name))
             out_license.write_bytes(zf.read(f"{top}/LICENSE"))
+    found = sorted(p.name for p in (dest / PACKAGE).glob("*.py"))
+    for needed in ("__init__.py", "cli.py", "wizard.py", "common.py"):
+        if needed not in found:
+            sys.exit(f"{PACKAGE}/{needed} is not in the scripts ({found})")
     version = TIFFWORKFLOW_TAG.lstrip("v")
-    text = (dest / "convert_tiff.py").read_text(encoding="utf-8")
+    text = (dest / PACKAGE / "__init__.py").read_text(encoding="utf-8")
     m = re.search(r'^TOOLKIT_VERSION = "([^"]+)"', text, re.M)
     if not m or m.group(1) != version:
-        sys.exit(f"convert_tiff.py: TOOLKIT_VERSION {m and m.group(1)} != tag {TIFFWORKFLOW_TAG}")
+        sys.exit(f"{PACKAGE}/__init__.py: TOOLKIT_VERSION {m and m.group(1)} != tag {TIFFWORKFLOW_TAG}")
     return version
 
 

@@ -4,18 +4,24 @@ import os
 from PyInstaller.utils.hooks import collect_all
 
 SCRIPTS = os.path.join("build", "app", "scripts")
+PACKAGE = "tiff_workflow"
 
-# The wizard is imported as a module so PyInstaller bundles everything it uses
-# (rich and the standard library, its function-level imports included); it
-# also ships as a plain .py file in scripts/, which is what actually runs.
-#
-# The three backends and tiff_workflow_common.py are NOT imported here: a module
-# in the bundle would win over the plain file in scripts/, and the files that
-# run must be the ones of the tiff-workflow release. What they need from the
-# standard library is named instead (the wizard does not import all of it).
-hidden = ["convert_tiff", "ctypes", "datetime", "json", "math", "re", "shutil",
-          "subprocess", "tempfile", "threading", "uuid", "concurrent.futures",
-          "concurrent.futures.thread"]
+# The toolkit -- convert_tiff.py and the package tiff_workflow/ (tiff-workflow v3.1) -- ships
+# as plain .py files in scripts/, and those are what run: the launcher puts scripts/ first on
+# sys.path, and a setting edited in them counts. Its modules are analysed here, so PyInstaller
+# bundles everything they use (rich and the standard library, their function-level imports
+# included), and then taken OUT of the bundle below: a bundled copy would be imported instead
+# of the plain files.
+toolkit = ["convert_tiff", PACKAGE] + sorted(
+    f"{PACKAGE}.{name[:-3]}" for name in os.listdir(os.path.join(SCRIPTS, PACKAGE))
+    if name.endswith(".py") and name not in ("__init__.py", "__main__.py"))
+
+
+def is_toolkit(module):
+    return module == "convert_tiff" or module == PACKAGE or module.startswith(PACKAGE + ".")
+
+
+hidden = list(toolkit)
 datas, binaries = [], []
 d, b, h = collect_all("rich")
 datas += d
@@ -28,10 +34,12 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hidden,
-    excludes=["tkinter", "matplotlib", "IPython", "pytest", "numpy",
-              "compress_tiff_zip", "copy_exif_to_tiff", "generate_thumbnails",
-              "tiff_workflow_common"],
+    excludes=["tkinter", "matplotlib", "IPython", "pytest", "numpy"],
 )
+bundled = [entry[0] for entry in a.pure if is_toolkit(entry[0])]
+assert set(toolkit) <= set(bundled), f"the toolkit was not analysed: {sorted(set(toolkit) - set(bundled))}"
+a.pure = [entry for entry in a.pure if not is_toolkit(entry[0])]
+print(f"tiff-workflow.spec: {len(bundled)} module(s) of the toolkit analysed and left out of the bundle")
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name="tiff-workflow",
           console=True, version=os.path.join("build", "version_info.txt"),
