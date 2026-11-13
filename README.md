@@ -105,7 +105,8 @@ written). tiff-workflow's documentation applies word for word — replace
 `--input-dir`: without it, a command works on the folder the terminal is in.
 
 The commands work on several files at once by default, on any PC;
-`--force-sequential` turns that off.
+`--force-sequential` (compress) or `--workers 1` (copy-exif, thumbnails)
+turns that off.
 
 **A command line written for v3.0.0 or earlier is refused.** Since
 tiff-workflow v3.1 an option is written in full, in lower case, with two
