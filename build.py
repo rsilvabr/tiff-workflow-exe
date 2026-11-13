@@ -206,7 +206,9 @@ def main():
         old.unlink()
     shutil.copytree(BUILD / "pyi_dist" / "tiff-workflow", out)
     for sub in ("scripts", "tools", "licenses"):
-        shutil.copytree(app / sub, out / sub)
+        # The analysis of the package compiles it in build/app/scripts: no .pyc in the package
+        # (the plain files are what runs; Python compiles them where it may).
+        shutil.copytree(app / sub, out / sub, ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copy2(ROOT / "LICENSE", out / "licenses" / "LICENSE.tiff-workflow-exe")
     # PyInstaller bundles the Python runtime but not its license (PSF).
     shutil.copy2(Path(sys.base_prefix) / "LICENSE.txt", out / "licenses" / "LICENSE.python.txt")
