@@ -61,8 +61,12 @@ jobs:
           $help = & $exe --help
           if ($LASTEXITCODE -ne 0 -or -not ($help -match 'TIFF Workflow Manager')) { throw "--help failed: $help" }
           $empty = New-Item -ItemType Directory -Path (Join-Path $env:RUNNER_TEMP 'empty [x]')
-          & $exe thumbnails -InputDir $empty.FullName -DryRun
+          & $exe thumbnails --input-dir $empty.FullName --dry-run
           if ($LASTEXITCODE -ne 0) { throw "thumbnails exited $LASTEXITCODE" }
+          # The command line of v3.0.0 is refused (exit code 2) since tiff-workflow v3.1.
+          & $exe thumbnails -InputDir $empty.FullName -DryRun
+          if ($LASTEXITCODE -ne 2) { throw "the old command line exited $LASTEXITCODE, not 2" }
+          exit 0   # the runner ends a pwsh step with $LASTEXITCODE, the 2 expected above
 
       - name: SHA-256
         shell: pwsh
