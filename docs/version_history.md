@@ -6,13 +6,49 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
-| **[v3.0.0-exe1](#v300-exe1)** | 2026-11-11 | v3.0.0 | The scripts are Python now: no PowerShell in the package, which is much smaller; same command line and results |
+| **[v3.1.0-exe1](#v310-exe1)** | 2026-11-13 | v3.1.0 | The usual Python command line (`--mode 1 --input-dir`); old command lines and presets of v3.0.0 are refused; fixes that stop a photo from being lost |
+| [v3.0.0-exe1](#v300-exe1) | 2026-11-11 | v3.0.0 | The scripts are Python now: no PowerShell in the package, which is much smaller; same command line and results |
 | [v2.9.1-exe1](#v291-exe1) | 2026-11-11 | v2.9.1 | Fixes: a black-and-white photo stored as RGB stays RGB; Japanese IPTC survives; no swap leaves a photo's place empty |
 | [v2.9.0-exe1](#v290-exe1) | 2026-11-11 | v2.9.0 | A settings file instead of editing the scripts; Advanced options per run |
 | [v2.8.0-exe1](#v280-exe1) | 2026-11-10 | v2.8.0 | exiftool works with a temp folder outside the code page; an edit record in every compressed photo; release notice |
 | [v2.7.4-exe1](#v274-exe1) | 2026-11-07 | v2.7.4 | Modes 0/9 keep each original in place until its copy is ready; safe cross-drive staging |
 | [v2.7.3-exe1](#v273-exe1) | 2026-11-07 | v2.7.3 | Compress lists originals an interrupted mode 0/9 run left in `OLD_TIFFs` |
 | [v2.7.2-exe1](#v272-exe1) | 2026-10-25 | v2.7.2 | First package |
+
+---
+
+## v3.1.0-exe1
+
+*2026-11-13*
+
+- Packages tiff-workflow
+  [v3.1.0](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.1.0).
+  **What breaks:** the commands take the usual Python options,
+  `tiff-workflow.exe compress --mode 1 --input-dir "F:\Photos"` instead of
+  `-Mode 1 -InputDir "F:\Photos"`. A `.bat` or scheduled task in the old form
+  stops with exit code 2 and touches nothing until it is rewritten
+  ([the table](https://github.com/rsilvabr/tiff-workflow/blob/master/docs/command_line.md)
+  has every old option next to its new form). A preset saved by v3.0.0-exe1
+  or earlier that holds the old command line is refused (`--run-preset`
+  exits 1): run the workflow once from the wizard and save it again.
+- The fixes of tiff-workflow v3.1.0, among them: compress modes 2, 4 and 5
+  could replace one photo with another; on the plain screen a typed "no"
+  could run what it declined; Delete OLD_TIFFs checks each pair again right
+  before deleting. The list is in tiff-workflow's
+  [changelog](https://github.com/rsilvabr/tiff-workflow/blob/master/docs/CHANGELOG.md#v310).
+- `scripts\` holds tiff-workflow's new layout: `convert_tiff.py` and the
+  folder `tiff_workflow\`. The launcher hands every command line to it; the
+  package is left out of the program's bundle, so the plain files in
+  `scripts\` are what runs and a default edited there counts. Updating over
+  v3.0.0-exe1: delete the four old loose files in `scripts\`
+  (`compress_tiff_zip.py`, `copy_exif_to_tiff.py`, `generate_thumbnails.py`,
+  `tiff_workflow_common.py`); the wizard's start screen names them.
+- ExifTool 13.59 and ImageMagick 7.1.2-27 (Q16-HDRI), the same versions as
+  before.
+- Battery: 425 checks pass -- the 394 of tiff-workflow's real-photo battery,
+  run through the program, and 31 on the program itself (each command, a
+  default edited in `scripts\`, a preset of v3.1 run twice, and presets of
+  v3.0.0 and of the PowerShell edition refused with nothing written).
 
 ---
 
