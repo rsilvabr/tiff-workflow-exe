@@ -44,11 +44,11 @@ original is replaced. Everything it does is described in its own
 [README](https://github.com/rsilvabr/tiff-workflow#readme) and documentation;
 this repository only packages it:
 
-- The wizard (`convert_tiff.py`), the three Python scripts that do the work
-  (`compress_tiff_zip.py`, `copy_exif_to_tiff.py`, `generate_thumbnails.py`)
-  and the module they share (`tiff_workflow_common.py`) are **byte-for-byte**
-  those of the tiff-workflow release named above. No feature is added or
-  removed.
+- tiff-workflow's own files are **byte-for-byte** those of the tiff-workflow
+  release named above, as plain `.py` files in `scripts\`: `convert_tiff.py`,
+  which starts it, and the folder `tiff_workflow\` (the wizard, the three
+  commands that do the work and the module they share). No feature is added
+  or removed.
 - A small launcher runs them with the Python inside the program and puts the
   bundled tools first on `PATH`. Nothing else is needed on the PC
   ([no PowerShell](#no-powershell-since-v300) either).
@@ -76,7 +76,7 @@ GitHub records a build attestation for the zip and `tiff-workflow.exe`. With
 the [GitHub CLI](https://cli.github.com/):
 
 ```
-gh attestation verify tiff-workflow-3.0.0-exe1-x64.zip --repo rsilvabr/tiff-workflow-exe
+gh attestation verify tiff-workflow-<version>-x64.zip --repo rsilvabr/tiff-workflow-exe
 ```
 
 It names the commit and the workflow run the file came from, and fails for a
@@ -91,23 +91,34 @@ From a terminal (`cmd` or PowerShell) in the program's folder:
 tiff-workflow.exe                                 the interactive wizard
 tiff-workflow.exe --run-preset "NIGHTLY ZIP"      a preset saved in the wizard, unattended
 tiff-workflow.exe --list-presets
-tiff-workflow.exe compress   -Mode 1 -InputDir "F:\Photos"     (compress_tiff_zip.py)
-tiff-workflow.exe copy-exif  -InputDir "F:\Fuji\S5pro"         (copy_exif_to_tiff.py)
-tiff-workflow.exe thumbnails -InputDir "F:\Photos" -Size 256   (generate_thumbnails.py)
+tiff-workflow.exe compress --mode 1 --input-dir "F:\Photos"
+tiff-workflow.exe copy-exif --input-dir "F:\Fuji\S5pro"
+tiff-workflow.exe thumbnails --input-dir "F:\Photos" --size 256
+tiff-workflow.exe compress --help                 every option of a command
 ```
 
-Each `compress`/`copy-exif`/`thumbnails` line takes exactly what the
-matching tiff-workflow script takes, and its exit code is the script's.
-tiff-workflow's per-script documentation applies word for word — replace
-`python compress_tiff_zip.py` with `tiff-workflow.exe compress`,
-`python copy_exif_to_tiff.py` with `tiff-workflow.exe copy-exif` and
-`python generate_thumbnails.py` with `tiff-workflow.exe thumbnails`. The
-parameters are the same ones the PowerShell scripts of earlier versions
-had. Always pass `-InputDir`: without it, a script works on the folder the
-terminal is in.
+`tiff-workflow.exe` stands for tiff-workflow's `python convert_tiff.py`: each
+line takes exactly what tiff-workflow takes there, and its exit code is
+tiff-workflow's (0 done, 1 something failed, 2 a line that cannot run as
+written). tiff-workflow's documentation applies word for word — replace
+`python convert_tiff.py` with `tiff-workflow.exe`. Always pass
+`--input-dir`: without it, a command works on the folder the terminal is in.
 
-The scripts work on several files at once by default, on any PC;
-`-ForceSequential` turns that off.
+The commands work on several files at once by default, on any PC;
+`--force-sequential` turns that off.
+
+**A command line written for v3.0.0 or earlier is refused.** Since
+tiff-workflow v3.1 an option is written in full, in lower case, with two
+dashes: `--mode 9 --input-dir "F:\Photos" --no-safe-mode`, not
+`-Mode 9 -InputDir "F:\Photos" -SafeMode:$false`. A `.bat`, scheduled task or
+shortcut in the old form stops with exit code 2 and touches nothing until it
+is rewritten. tiff-workflow's
+[command line page](https://github.com/rsilvabr/tiff-workflow/blob/master/docs/command_line.md)
+lists every old option next to its new form (the `tools/legacy_args.py` the
+error message names is in tiff-workflow's repository, not in this program).
+A preset saved by v3.0.0 or earlier that holds the old command line is
+refused the same way (`--run-preset` exits 1, nothing touched): run its
+workflow once from the wizard and save the preset again.
 
 A preset can be run from a scheduled task or a shortcut:
 
@@ -124,8 +135,9 @@ Up to v2.9.1 the work was done by PowerShell scripts, and the package
 carried PowerShell 7 to run them. Since v3.0.0 the scripts are Python and
 run in the program itself: there is no PowerShell in the package, nothing in
 it starts one, and there is no execution policy to set or think about.
-Presets saved by an earlier version keep working: they run the Python
-scripts with the same arguments.
+A preset saved by a PowerShell version that runs the scripts holds a
+PowerShell command line and is refused, like those of v3.0.0
+([Command line](#command-line)): save it again from the wizard.
 
 [v2.9.1-exe1](https://github.com/rsilvabr/tiff-workflow-exe/releases/tag/v2.9.1-exe1)
 is the last package with PowerShell 7 inside and stays available.
@@ -136,9 +148,10 @@ tiff-workflow describes that edition, and what changed with v3.0.0, in
 
 | What | Where |
 |---|---|
-| Settings and presets | `%USERPROFILE%\.convert_tiff_config.json` — the same file the Python version uses, so both see the same presets. A preset runs the scripts next to the program that starts it, whichever version saved it |
+| Settings and presets | `%USERPROFILE%\.convert_tiff_config.json` — the same file the Python version uses, so both see the same presets. A preset runs the copy of tiff-workflow of the program that starts it, whichever copy saved it |
+| Changed defaults (the wizard's menu 6, *Script settings*) | `%USERPROFILE%\.tiff_workflow_settings.json`, kept across updates; a `.tiff_workflow_settings.json` in `scripts\` is read instead when there is one |
 | Logs | `Logs\` in the folder the program was started from: the program folder when you double-click, the terminal's folder from a command line, the task's *Start in* folder from Task Scheduler (exactly like the Python version) |
-| Manifests the wizard creates | `scripts\manifests\` inside the program folder (next to the wizard, as in the Python version). A manifest you wrote yourself can live anywhere |
+| Manifests the wizard creates | `scripts\manifests\` inside the program folder (next to `convert_tiff.py`, as in the Python version). A manifest you wrote yourself can live anywhere |
 | A copy of ExifTool | `%LOCALAPPDATA%\tiff-workflow\exiftool-13.59`, only when the program folder's name is outside the Windows ANSI code page (Japanese, Cyrillic, ...) on a drive without 8.3 short names: ExifTool cannot start from such a folder |
 | Temporary files | `%TEMP%`, or the staging folder you choose in the wizard |
 
@@ -149,7 +162,12 @@ Nothing goes to the Windows registry.
 - **Update:** unzip the new version over the old folder, or into a new one.
   Settings and presets are kept either way; with a new folder, copy
   `scripts\manifests\` across if you use manifests (presets point at those
-  files).
+  files). Over the folder of v3.0.0-exe1 or earlier, delete the old loose
+  files in `scripts\` afterwards — `compress_tiff_zip.py`,
+  `copy_exif_to_tiff.py`, `generate_thumbnails.py`,
+  `tiff_workflow_common.py`: their code is in `scripts\tiff_workflow\` now,
+  and the wizard's start screen names them until they are gone. A default
+  you had edited in one of them has to be set again (see below).
 - **Remove:** delete the folder. The settings file and the logs stay in the
   places above until you delete them too.
 
@@ -158,7 +176,7 @@ Nothing goes to the Windows registry.
 | Path | What |
 |---|---|
 | `tiff-workflow.exe`, `_internal\` | Python 3.12, which runs the scripts, and the library the wizard uses (rich) |
-| `scripts\` | The tiff-workflow scripts, unchanged: the wizard (`convert_tiff.py`), `compress_tiff_zip.py`, `copy_exif_to_tiff.py`, `generate_thumbnails.py` and the module those three share (`tiff_workflow_common.py`) |
+| `scripts\` | tiff-workflow, unchanged: `convert_tiff.py`, which starts it, and `tiff_workflow\` — the wizard (`wizard.py`), the three commands (`compress_tiff_zip.py`, `copy_exif_to_tiff.py`, `generate_thumbnails.py`) and the module they share (`common.py`). These plain files are what runs: a default edited at the top of one of them counts, but the next update overwrites it; the wizard's menu 6 keeps a change across updates |
 | `tools\exiftool\` | ExifTool 13.59 (Windows build) |
 | `tools\imagemagick\` | `magick.exe` 7.1.2-27 portable (Q16-HDRI) and its configuration |
 | `licenses\` | The licenses of everything above, Python's included (gathered by `build.py` from each download, so the folder is in the package, not in this repository) |
@@ -199,8 +217,10 @@ one) against the built program's scripts, with only the bundled exiftool
 and magick on `PATH`. The scripts are started through `tiff-workflow.exe`
 itself (the battery's "python" is the program), both several files at once
 and one at a time. Before it, a section of its own drives
-`tiff-workflow.exe`: the help, each command, a preset saved from another
-folder and a preset saved by the PowerShell edition (each run twice).
+`tiff-workflow.exe`: the help, each command, a default edited in `scripts\`
+(the program must use it), a preset of the current version saved from
+another folder (run twice: the second run rewrites nothing), and presets
+saved by v3.0.0 and by the PowerShell edition (refused, nothing written).
 
 The program runs from a copy in a folder named `伊豆沼 [app] 100% & co` on a
 drive without 8.3 short names, and every file of that copy carries the

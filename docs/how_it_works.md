@@ -1,52 +1,57 @@
 # How it works
 
-## One program, a wizard and three scripts
+## One program, a wizard and three commands
 
-tiff-workflow is a Python wizard (`convert_tiff.py`) and three Python
-scripts that do the work, the backends: `compress_tiff_zip.py`,
-`copy_exif_to_tiff.py` and `generate_thumbnails.py`, which share one module,
-`tiff_workflow_common.py`. The wizard starts a backend as a separate
-process, `<the Python that runs the wizard> <script> ...`
+Since v3.1, tiff-workflow is `convert_tiff.py`, which only starts it, and the
+package `tiff_workflow\` next to it: the wizard (`wizard.py`), the three
+backends that do the work (`compress_tiff_zip.py`, `copy_exif_to_tiff.py`,
+`generate_thumbnails.py`) and the module they share (`common.py`).
+`python convert_tiff.py` is the wizard; `python convert_tiff.py
+compress|copy-exif|thumbnails ...` runs a backend (`tiff_workflow.cli.main`
+decides which). The wizard starts a backend as a separate process,
+`<the Python that runs the wizard> <its convert_tiff.py> <command> ...`
 (`sys.executable`), and the backends call `exiftool` and `magick`, finding
 them on `PATH`.
 
 In the program, the Python that runs the wizard is `tiff-workflow.exe`
 itself, so the wizard starts a backend as
-`tiff-workflow.exe <folder>\compress_tiff_zip.py ...`. The launcher
-(`src/tiff_workflow_exe.py`) is the Python that runs the scripts, and it
-only routes its command line:
+`tiff-workflow.exe <folder>\convert_tiff.py compress ...`. The launcher
+(`src/tiff_workflow_exe.py`) is the Python that runs the package, and it
+only routes its command line to `tiff_workflow.cli.main`:
 
 | Command line | Runs |
 |---|---|
-| `tiff-workflow.exe [options]` | `scripts\convert_tiff.py` (the wizard), exactly as `python convert_tiff.py` would run it |
-| `tiff-workflow.exe compress\|copy-exif\|thumbnails ...` | `scripts\compress_tiff_zip.py`, `scripts\copy_exif_to_tiff.py` or `scripts\generate_thumbnails.py` with the rest of the line |
-| `tiff-workflow.exe <path>\<a backend script>.py ...` | the same backend: this is how the wizard starts one. Only the script's name counts; the copy that runs is always the one in the program's own `scripts\` folder |
+| `tiff-workflow.exe [options]` | the wizard, exactly as `python convert_tiff.py [options]` would run it |
+| `tiff-workflow.exe compress\|copy-exif\|thumbnails ...` | that backend with the rest of the line, as `python convert_tiff.py compress ...` would (the command's name is taken in any case) |
+| `tiff-workflow.exe <path>\convert_tiff.py ...` | the rest of the line: this is how the wizard starts a backend. Only the file's name counts; the package that runs is always the one in the program's own `scripts\` folder |
 
-Each script runs through `runpy` as `__main__`, in the program's own
-process: there is no second interpreter and no other program in between. A
-backend's exit code is the program's.
+Everything runs in the program's own process: there is no second
+interpreter and no other program in between. A backend's exit code is the
+program's (Ctrl+C that reaches the launcher is 130).
 
-The wizard finds its scripts next to itself (`scripts\`), and the backends
-find their shared module the same way, so nothing in tiff-workflow is
-modified.
+The launcher puts `scripts\` first on Python's module path, and the package
+finds its own files there, so nothing in tiff-workflow is modified.
 
 Up to v2.9.1 the backends were PowerShell scripts and the package carried
 PowerShell 7 to run them; that is described in the
 [v2.9.1-exe1](https://github.com/rsilvabr/tiff-workflow-exe/blob/v2.9.1-exe1/docs/how_it_works.md)
 version of this page. Since v3.0.0-exe1 there is no PowerShell in the
-package and nothing in it starts one. A preset saved by one of those
-versions holds a PowerShell command line; the wizard reads it and runs the
-Python backend with the same arguments.
+package and nothing in it starts one. Up to v3.0.x the toolkit was five
+loose scripts in `scripts\`, run by path. A preset saved by v3.0.0 or
+earlier that holds their command line (`-Mode 1 ...`, or a PowerShell one)
+is refused since v3.1, with nothing touched: it has to be saved again.
 
 ## Python and its libraries
 
 PyInstaller builds a one-folder program: `tiff-workflow.exe` plus
 `_internal\` with Python 3.12, rich and every standard-library module the
-scripts import. To find those modules the build imports the wizard as a
-module, names the standard-library modules the backends need
-(`hiddenimports` in `tiff-workflow.spec`) and collects rich completely. The
-wizard, the backends and their shared module ship as plain `.py` files in
-`scripts\`: those are what runs.
+toolkit imports. To find those modules, `tiff-workflow.spec` has PyInstaller
+analyse `convert_tiff.py` and every module of the package (the imports
+inside functions too) and collects rich completely; then it takes the
+toolkit's own modules OUT of the bundle, because a bundled copy would be
+imported instead of the plain files. `convert_tiff.py` and `tiff_workflow\`
+ship as plain `.py` files in `scripts\`: those are what runs, and a default
+edited in them counts (the test battery checks it).
 
 ## The tools
 
@@ -91,16 +96,18 @@ it follows tiff-workflow-exe's releases).
 ## Logs
 
 The three backends write their logs into `Logs\<script>\` under the current
-folder, and the wizard writes its own there too (its manifest-run summary
-goes to `Logs\convert_tiff\` next to the wizard, in `scripts\`). The launcher
-does not change the current folder: a double-click starts in the program
-folder, a terminal in its own folder, a scheduled task in its *Start in*
-folder — as with the Python version.
+folder, and the wizard writes its own there too (`Logs\convert_tiff\`). The
+launcher does not change the current folder: a double-click starts in the
+program folder, a terminal in its own folder, a scheduled task in its
+*Start in* folder — as with the Python version.
 
-## Files next to the wizard
+## Files next to convert_tiff.py
 
-The wizard keeps the manifests it creates in a `manifests\` folder next to
-itself: `scripts\manifests\` in the program folder.
+The folder of `convert_tiff.py` is tiff-workflow's installation: the wizard
+keeps the manifests it creates in `manifests\` there, `scripts\manifests\`
+in the program folder, and a settings file
+(`.tiff_workflow_settings.json`) placed there is read before the one in the
+user profile, where the wizard's menu 6 writes it by default.
 
 ## The build
 
@@ -108,8 +115,9 @@ itself: `scripts\manifests\` in the program folder.
 
 1. creates `.venv` with the pinned packages (rich) and PyInstaller;
 2. downloads the tiff-workflow tag `TIFFWORKFLOW_TAG` from GitHub, takes
-   `convert_tiff.py`, the three backends, `tiff_workflow_common.py` and the
-   license, and checks that the wizard's `TOOLKIT_VERSION` matches the tag;
+   `convert_tiff.py`, every `.py` of `tiff_workflow\` (no list to keep) and
+   the license, and checks that `TOOLKIT_VERSION` in
+   `tiff_workflow\__init__.py` matches the tag;
 3. downloads the two tools (ExifTool and ImageMagick), checks each SHA-256,
    and copies what is needed into `build\app\tools`;
 4. runs PyInstaller with `tiff-workflow.spec` (the Windows version
