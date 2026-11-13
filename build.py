@@ -26,7 +26,7 @@ import zipfile
 from pathlib import Path
 
 # --- settings --------------------------------------------------------------
-TIFFWORKFLOW_TAG = "v3.1.0"
+TIFFWORKFLOW_TAG = "v3.1.1-rc1"
 # Package revision for this tiff-workflow tag: v2.7.2 + 1 -> release "v2.7.2-exe1".
 PACKAGE_REVISION = 1
 TOOLS = {
@@ -162,7 +162,10 @@ def get_tools(app):
 
 
 def version_info(version):
-    nums = (version.split(".") + ["0", "0", "0"])[:3] + ["0"]
+    # Numbers only: a test release ("3.1.1-rc1") keeps its name in the strings below, and
+    # "1-rc1" is not a number PyInstaller can read (as jxl-photo-exe's build).
+    nums = [re.match(r"\d*", part).group() or "0"
+            for part in (version.split(".") + ["0", "0", "0"])[:3]] + ["0"]
     (BUILD / "version_info.txt").write_text(f"""VSVersionInfo(
   ffi=FixedFileInfo(filevers=({','.join(nums)}), prodvers=({','.join(nums)})),
   kids=[StringFileInfo([StringTable('040904B0', [

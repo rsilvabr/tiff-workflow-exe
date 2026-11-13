@@ -11,8 +11,10 @@
 > here is a newer way of packaging the same scripts, meant for people who
 > would rather not install Python and the tools themselves.
 
-**Current version: v3.1.0-exe1** (2026-11-13) · packages tiff-workflow
-[v3.1.0](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.1.0) ·
+**Current version: v3.1.1-rc1-exe1** (2026-11-14, pre-release; last stable:
+[v3.1.0-exe1](https://github.com/rsilvabr/tiff-workflow-exe/releases/tag/v3.1.0-exe1)) ·
+packages tiff-workflow
+[v3.1.1-rc1](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.1.1-rc1) ·
 ExifTool 13.59 · ImageMagick 7.1.2-27 (Q16-HDRI) ·
 [All releases](docs/version_history.md) · [How it works](docs/how_it_works.md) ·
 [Bug tracking](docs/bug_tracking.md)

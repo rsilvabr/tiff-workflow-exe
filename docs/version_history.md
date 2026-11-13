@@ -6,6 +6,7 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
+| [v3.1.1-rc1-exe1](#v311-rc1-exe1) | 2026-11-14 | v3.1.1-rc1 | Test release (pre-release): rare edge cases closed by the final review of v3.1 |
 | **[v3.1.0-exe1](#v310-exe1)** | 2026-11-13 | v3.1.0 | The usual Python command line (`--mode 1 --input-dir`); old command lines and presets of v3.0.0 are refused; fixes that stop a photo from being lost |
 | [v3.0.0-exe1](#v300-exe1) | 2026-11-11 | v3.0.0 | The scripts are Python now: no PowerShell in the package, which is much smaller; same command line and results |
 | [v2.9.1-exe1](#v291-exe1) | 2026-11-11 | v2.9.1 | Fixes: a black-and-white photo stored as RGB stays RGB; Japanese IPTC survives; no swap leaves a photo's place empty |
@@ -14,6 +15,24 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 | [v2.7.4-exe1](#v274-exe1) | 2026-11-07 | v2.7.4 | Modes 0/9 keep each original in place until its copy is ready; safe cross-drive staging |
 | [v2.7.3-exe1](#v273-exe1) | 2026-11-07 | v2.7.3 | Compress lists originals an interrupted mode 0/9 run left in `OLD_TIFFs` |
 | [v2.7.2-exe1](#v272-exe1) | 2026-10-25 | v2.7.2 | First package |
+
+---
+
+## v3.1.1-rc1-exe1
+
+*2026-11-14 -- a test release (GitHub pre-release); the last stable package is v3.1.0-exe1*
+
+- Packages tiff-workflow
+  [v3.1.1-rc1](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.1.1-rc1), the first
+  test release of v3.1.1. Test releases are named `-rcN` (as jxl-photo's): that name is what a
+  file rewritten with one records in its history, and the release check of the wizard reads it.
+- Rare edge cases closed by the final review of v3.1: compress mode 8 with `--delete-source`
+  keeps a `.tiff` whose compressed copy could not land; copy-exif `--compress-zip` checks the
+  pixels of the file as it will land; Restore OLD_TIFFs moves an `x.tif` aside only when it is
+  the restored photo's own compressed copy.
+- Nothing changes for whoever runs v3.1.0-exe1: the same command line, presets and settings.
+- The build gives the Windows version information the numbers only (`3.1.1.0`); the name with
+  `-rc1` stays in its text fields.
 
 ---
 
