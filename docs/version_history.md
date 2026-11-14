@@ -6,7 +6,7 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
-| **[v3.1.1-exe1](#v311-exe1)** | 2026-11-14 | v3.1.1 | Faster and lighter on the disk, the same files; thumbnails about twice as fast; Diagnose works in memory and recognizes padded black-and-white scans with IR |
+| **[v3.1.1-exe1](#v311-exe1)** | 2026-11-15 | v3.1.1 | Faster and lighter on the disk, the same files; thumbnails about twice as fast; Diagnose works in memory and recognizes padded black-and-white scans with IR; the originals it keeps are left alone |
 | [v3.1.1-rc1-exe1](#v311-rc1-exe1) | 2026-11-14 | v3.1.1-rc1 | Test release (pre-release): rare edge cases closed by the final review of v3.1 |
 | [v3.1.0-exe1](#v310-exe1) | 2026-11-13 | v3.1.0 | The usual Python command line (`--mode 1 --input-dir`); old command lines and presets of v3.0.0 are refused; fixes that stop a photo from being lost |
 | [v3.0.0-exe1](#v300-exe1) | 2026-11-11 | v3.0.0 | The scripts are Python now: no PowerShell in the package, which is much smaller; same command line and results |
@@ -21,7 +21,8 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 ## v3.1.1-exe1
 
-*2026-11-14*
+*2026-11-15 (first published on 2026-11-14 and taken back the same night, to ship with the two
+fixes of tiff-workflow's audit round 31)*
 
 - Packages tiff-workflow
   [v3.1.1](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.1.1): the fixes of the test
@@ -31,6 +32,10 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 - Diagnose now recognizes padded black-and-white scans whose IR channel is a 4th sample (it
   reported them as real 16-bit). It asks one question less (how to compress temporary files:
   there are none); presets saved with the old answer keep working.
+- The originals Diagnose keeps in `OLD_PADDED\` are left alone: compress (every mode) and the
+  thumbnails skip that folder as they skip `OLD_TIFFs\` (a recursive run used to recompress
+  them or write its output next to them). A wizard run redirected to a file keeps Japanese
+  names (they came out as `?`).
 - Nothing else changes for whoever runs v3.1.0-exe1 or v3.1.1-rc1-exe1: the same command line,
   presets and settings.
 
