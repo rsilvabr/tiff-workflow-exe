@@ -128,7 +128,8 @@ def exe_checks(b, exe, app, fixtures, work):
     # the bundle): a default edited there is the one the program uses.
     gt = scripts / "tiff_workflow" / "generate_thumbnails.py"
     original = gt.read_bytes()
-    edited = original.replace(b'P("size", "int", 256)', b'P("size", "int", 200)', 1)
+    # v3.3.0 gave the row its range: P("size", "int", 256, lo=32, ...) -- match the default only
+    edited = original.replace(b'P("size", "int", 256', b'P("size", "int", 200', 1)
     b.check("edited default: the size default is where the test edits it", edited != original)
     gt.write_bytes(edited)
     try:
