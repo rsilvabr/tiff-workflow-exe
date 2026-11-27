@@ -6,7 +6,8 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
-| **[v3.2.0-exe1](#v320-exe1)** | 2026-11-15 | v3.2.0 | Capture One exports about 10 % smaller with the same pixels (`--recompress-zip`, `--include-folders`, `--zip-predictor auto`); a compressed file keeps its original's date; IPTC times keep the zone the photo had |
+| **[v3.2.1-exe1](#v321-exe1)** | 2026-11-27 | v3.2.1 | Checked on every Python from 3.9 to 3.15; nothing changes in the program, which runs Python 3.12 |
+| [v3.2.0-exe1](#v320-exe1) | 2026-11-15 | v3.2.0 | Capture One exports about 10 % smaller with the same pixels (`--recompress-zip`, `--include-folders`, `--zip-predictor auto`); a compressed file keeps its original's date; IPTC times keep the zone the photo had |
 | [v3.1.1-exe1](#v311-exe1) | 2026-11-15 | v3.1.1 | Faster and lighter on the disk, the same files; thumbnails about twice as fast; Diagnose works in memory and recognizes padded black-and-white scans with IR; the originals it keeps are left alone |
 | [v3.1.1-rc1-exe1](#v311-rc1-exe1) | 2026-11-14 | v3.1.1-rc1 | Test release (pre-release): rare edge cases closed by the final review of v3.1 |
 | [v3.1.0-exe1](#v310-exe1) | 2026-11-13 | v3.1.0 | The usual Python command line (`--mode 1 --input-dir`); old command lines and presets of v3.0.0 are refused; fixes that stop a photo from being lost |
@@ -19,6 +20,17 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 | [v2.7.2-exe1](#v272-exe1) | 2026-10-25 | v2.7.2 | First package |
 
 ---
+
+## v3.2.1-exe1
+
+*2026-11-27*
+
+- Packages tiff-workflow
+  [v3.2.1](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.2.1): the toolkit is
+  checked on every Python from 3.9 to 3.15, and on Python 3.13 and newer the wizard's exiftool
+  calls start no thread again. The program runs its own Python 3.12, which was not affected:
+  it behaves as v3.2.0-exe1 did.
+- Nothing to change for whoever runs v3.2.0-exe1: the same command line, presets and settings.
 
 ## v3.2.0-exe1
 
