@@ -6,7 +6,8 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 
 | Version | Date | tiff-workflow | Highlights |
 |---------|------|---------------|------------|
-| **[v3.2.1-exe1](#v321-exe1)** | 2026-11-27 | v3.2.1 | Checked on every Python from 3.9 to 3.15; nothing changes in the program, which runs Python 3.12 |
+| **[v3.3.0-exe1](#v330-exe1)** | 2026-11-27 | v3.3.0 | The wizard shows every setting on one review screen; `--zip-level` for faster compression; a mode-8 preset may run unattended once allowed; a killed run cleans up after itself |
+| [v3.2.1-exe1](#v321-exe1) | 2026-11-27 | v3.2.1 | Checked on every Python from 3.9 to 3.15; nothing changes in the program, which runs Python 3.12 |
 | [v3.2.0-exe1](#v320-exe1) | 2026-11-15 | v3.2.0 | Capture One exports about 10 % smaller with the same pixels (`--recompress-zip`, `--include-folders`, `--zip-predictor auto`); a compressed file keeps its original's date; IPTC times keep the zone the photo had |
 | [v3.1.1-exe1](#v311-exe1) | 2026-11-15 | v3.1.1 | Faster and lighter on the disk, the same files; thumbnails about twice as fast; Diagnose works in memory and recognizes padded black-and-white scans with IR; the originals it keeps are left alone |
 | [v3.1.1-rc1-exe1](#v311-rc1-exe1) | 2026-11-14 | v3.1.1-rc1 | Test release (pre-release): rare edge cases closed by the final review of v3.1 |
@@ -20,6 +21,20 @@ itself is in [its changelog](https://github.com/rsilvabr/tiff-workflow/blob/mast
 | [v2.7.2-exe1](#v272-exe1) | 2026-10-25 | v2.7.2 | First package |
 
 ---
+
+## v3.3.0-exe1
+
+*2026-11-27*
+
+- Packages tiff-workflow
+  [v3.3.0](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.3.0): the wizard asks only
+  the folder (and the mode or the pattern), then shows every setting on one review screen with
+  where its value comes from; `--zip-level 1-9` (compress, copy-exif `--compress-zip`, the
+  settings file) writes faster at a lower level with the same pixels -- the default 7 gives the
+  files of before; a mode-8 preset may run unattended (`--run-preset`) once it is allowed with
+  `[U]` in the wizard's menu 5 (`--delete-source` never runs unattended); the next run removes
+  what a killed run left next to the photos.
+- Nothing to change for whoever runs v3.2.1-exe1: the same command line, presets and settings.
 
 ## v3.2.1-exe1
 

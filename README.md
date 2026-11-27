@@ -11,9 +11,9 @@
 > here is a newer way of packaging the same scripts, meant for people who
 > would rather not install Python and the tools themselves.
 
-**Current version: v3.2.1-exe1** (2026-11-27) ·
+**Current version: v3.3.0-exe1** (2026-11-27) ·
 packages tiff-workflow
-[v3.2.1](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.2.1) ·
+[v3.3.0](https://github.com/rsilvabr/tiff-workflow/releases/tag/v3.3.0) ·
 ExifTool 13.59 · ImageMagick 7.1.2-27 (Q16-HDRI) ·
 [All releases](docs/version_history.md) · [How it works](docs/how_it_works.md) ·
 [Bug tracking](docs/bug_tracking.md)
@@ -64,7 +64,8 @@ this repository only packages it:
    Avoid `C:\Program Files` (the folder must stay writable: the logs go there
    when you double-click) and do not run it from inside the zip.
 3. Double-click **`tiff-workflow.exe`**. The interactive wizard opens in a
-   console window and asks, step by step, what to do and where.
+   console window, asks what to do and where, and then shows every setting on
+   one review screen: a number changes a row, `d` runs a dry run, `r` runs.
 
 The first time, Windows SmartScreen may say *"Windows protected your PC"*:
 the program is not code-signed. Choose **More info → Run anyway**.
@@ -93,6 +94,7 @@ tiff-workflow.exe                                 the interactive wizard
 tiff-workflow.exe --run-preset "NIGHTLY ZIP"      a preset saved in the wizard, unattended
 tiff-workflow.exe --list-presets
 tiff-workflow.exe compress --mode 1 --input-dir "F:\Photos"
+tiff-workflow.exe compress --mode 9 --input-dir "F:\Photos" --zip-level 3   faster, a little larger
 tiff-workflow.exe copy-exif --input-dir "F:\Fuji\S5pro"
 tiff-workflow.exe thumbnails --input-dir "F:\Photos" --size 256
 tiff-workflow.exe compress --help                 every option of a command
